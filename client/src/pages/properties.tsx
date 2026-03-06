@@ -1,30 +1,84 @@
 import { useState } from "react";
-import { mockProperties } from "@/lib/mock-data";
+import { useProperties, useCreateProperty, useDeleteProperty } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Search, Plus, MoreHorizontal, Star, Home } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { MapPin, Search, Plus, MoreHorizontal, Home, Loader2 } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Properties() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: properties, isLoading } = useProperties();
+  const createProperty = useCreateProperty();
+  const deleteProperty = useDeleteProperty();
+  const { toast } = useToast();
 
-  const filteredProperties = mockProperties.filter(property => 
+  const [newProperty, setNewProperty] = useState({
+    name: "",
+    address: "",
+    nightlyRate: 0,
+    status: "active",
+    occupancyRate: 0,
+    monthlyRevenue: 0,
+    imageUrl: "/property-1.jpg",
+  });
+
+  const filteredProperties = (properties || []).filter(property => 
     property.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     property.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleCreateProperty = () => {
+    if (!newProperty.name || !newProperty.address) {
+      toast({ title: "Please fill in property name and address", variant: "destructive" });
+      return;
+    }
+    createProperty.mutate(newProperty, {
+      onSuccess: () => {
+        toast({ title: "Property created successfully" });
+        setDialogOpen(false);
+        setNewProperty({ name: "", address: "", nightlyRate: 0, status: "active", occupancyRate: 0, monthlyRevenue: 0, imageUrl: "/property-1.jpg" });
+      },
+    });
+  };
+
+  const handleDeleteProperty = (id: number) => {
+    deleteProperty.mutate(id, {
+      onSuccess: () => {
+        toast({ title: "Property deleted successfully" });
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif text-primary">Properties</h1>
+          <h1 data-testid="text-properties-title" className="text-3xl font-bold tracking-tight font-serif text-primary">Properties</h1>
           <p className="text-muted-foreground mt-1">Manage your listings and view their performance.</p>
         </div>
         
@@ -32,24 +86,73 @@ export default function Properties() {
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
+              data-testid="input-search-properties"
               placeholder="Search properties..." 
               className="pl-9 rounded-xl"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button className="rounded-xl shrink-0 shadow-sm text-primary-foreground">
-            <Plus className="mr-2 h-4 w-4" /> Add Property
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-property" className="rounded-xl shrink-0 shadow-sm text-primary-foreground">
+                <Plus className="mr-2 h-4 w-4" /> Add Property
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="font-serif text-primary">Add New Property</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Property Name</Label>
+                  <Input
+                    data-testid="input-property-name"
+                    value={newProperty.name}
+                    onChange={(e) => setNewProperty(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Royal Heritage Haveli"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Input
+                    data-testid="input-property-address"
+                    value={newProperty.address}
+                    onChange={(e) => setNewProperty(p => ({ ...p, address: e.target.value }))}
+                    placeholder="e.g. C-Scheme, Jaipur, RJ"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nightly Rate (₹)</Label>
+                  <Input
+                    data-testid="input-property-rate"
+                    type="number"
+                    value={newProperty.nightlyRate || ""}
+                    onChange={(e) => setNewProperty(p => ({ ...p, nightlyRate: Number(e.target.value) }))}
+                    placeholder="e.g. 500"
+                  />
+                </div>
+                <Button
+                  data-testid="button-submit-property"
+                  className="w-full text-primary-foreground"
+                  onClick={handleCreateProperty}
+                  disabled={createProperty.isPending}
+                >
+                  {createProperty.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Create Property
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProperties.map((property) => (
-          <Card key={property.id} className="overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-all group border-border">
+          <Card key={property.id} data-testid={`card-property-${property.id}`} className="overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-all group border-border">
             <div className="relative aspect-[4/3] overflow-hidden bg-muted">
               <img 
-                src={property.image} 
+                src={property.imageUrl || "/property-1.jpg"} 
                 alt={property.name}
                 className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
               />
@@ -83,7 +186,12 @@ export default function Properties() {
                     <DropdownMenuItem>Edit Property</DropdownMenuItem>
                     <DropdownMenuItem>Manage Calendar</DropdownMenuItem>
                     <DropdownMenuItem>View Analytics</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">Deactivate Listing</DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDeleteProperty(property.id)}
+                    >
+                      Delete Listing
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

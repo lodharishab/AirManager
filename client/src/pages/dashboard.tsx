@@ -1,49 +1,68 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockProperties, mockBookings, monthlyRevenueData } from "@/lib/mock-data";
+import { useProperties, useBookings, useRevenueData, useDashboardStats, useSeedData } from "@/lib/api";
 import { 
   TrendingUp, 
   Users, 
   Home, 
   CalendarCheck, 
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Loader2
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { useEffect } from "react";
 
 export default function Dashboard() {
-  const activeProperties = mockProperties.filter(p => p.status === 'active').length;
-  const currentBookings = mockBookings.filter(b => b.status === 'current').length;
-  const upcomingBookings = mockBookings.filter(b => b.status === 'upcoming').length;
-  
-  const totalMonthlyRevenue = mockProperties.reduce((sum, p) => sum + p.monthlyRevenue, 0);
-  const averageOccupancy = Math.round(mockProperties.reduce((sum, p) => sum + p.occupancyRate, 0) / mockProperties.length);
+  const { data: properties, isLoading: propsLoading } = useProperties();
+  const { data: allBookings, isLoading: bookingsLoading } = useBookings();
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueData();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const seedMutation = useSeedData();
+
+  useEffect(() => {
+    if (properties && properties.length === 0 && !seedMutation.isPending) {
+      seedMutation.mutate();
+    }
+  }, [properties]);
+
+  const isLoading = propsLoading || bookingsLoading || revenueLoading || statsLoading;
+
+  if (isLoading || seedMutation.isPending) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const bookings = allBookings || [];
+  const monthlyRevenueData = revenueData || [];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif text-primary">Overview</h1>
+          <h1 data-testid="text-dashboard-title" className="text-3xl font-bold tracking-tight font-serif text-primary">Overview</h1>
           <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your properties.</p>
         </div>
         <Link href="/properties">
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm hover:shadow-md transition-all">
+          <Button data-testid="button-add-property" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm hover:shadow-md transition-all">
             Add New Property
           </Button>
         </Link>
       </div>
 
-      {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all border-border">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-3xl font-bold font-serif">₹{totalMonthlyRevenue.toLocaleString()}</p>
+                <p data-testid="text-total-revenue" className="text-3xl font-bold font-serif">₹{(stats?.totalMonthlyRevenue || 0).toLocaleString()}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
                 <TrendingUp size={20} />
@@ -64,7 +83,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Avg. Occupancy</p>
-                <p className="text-3xl font-bold font-serif">{averageOccupancy}%</p>
+                <p data-testid="text-avg-occupancy" className="text-3xl font-bold font-serif">{stats?.averageOccupancy || 0}%</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
                 <Users size={20} />
@@ -85,14 +104,16 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Active Properties</p>
-                <p className="text-3xl font-bold font-serif">{activeProperties}<span className="text-lg text-muted-foreground font-normal font-sans">/{mockProperties.length}</span></p>
+                <p data-testid="text-active-properties" className="text-3xl font-bold font-serif">{stats?.activeProperties || 0}<span className="text-lg text-muted-foreground font-normal font-sans">/{stats?.totalProperties || 0}</span></p>
               </div>
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Home size={20} />
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm">
-              <span className="text-muted-foreground">1 property in maintenance</span>
+              <span className="text-muted-foreground">
+                {(stats?.totalProperties || 0) - (stats?.activeProperties || 0)} property in maintenance
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -102,22 +123,21 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Upcoming Bookings</p>
-                <p className="text-3xl font-bold font-serif">{upcomingBookings}</p>
+                <p data-testid="text-upcoming-bookings" className="text-3xl font-bold font-serif">{stats?.upcomingBookings || 0}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
                 <CalendarCheck size={20} />
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm">
-              <span className="text-primary font-medium mr-2">{currentBookings}</span>
-              <span className="text-muted-foreground">guests arriving today</span>
+              <span className="text-primary font-medium mr-2">{stats?.currentBookings || 0}</span>
+              <span className="text-muted-foreground">guests currently staying</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Revenue Chart */}
         <Card className="lg:col-span-2 rounded-2xl shadow-sm overflow-hidden border-border">
           <CardHeader className="border-b bg-secondary/30 pb-4">
             <CardTitle className="text-lg font-semibold text-primary font-serif tracking-wide">Revenue Trend</CardTitle>
@@ -164,20 +184,19 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Bookings */}
         <Card className="rounded-2xl shadow-sm overflow-hidden flex flex-col border-border">
           <CardHeader className="border-b bg-secondary/30 pb-4 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-semibold text-primary font-serif tracking-wide">Recent Bookings</CardTitle>
             <Link href="/bookings">
-              <a className="text-sm text-primary font-medium hover:underline">View All</a>
+              <span className="text-sm text-primary font-medium hover:underline cursor-pointer">View All</span>
             </Link>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-auto">
             <div className="divide-y">
-              {mockBookings.slice(0, 4).map((booking) => {
-                const property = mockProperties.find(p => p.id === booking.propertyId);
+              {bookings.slice(0, 4).map((booking) => {
+                const property = (properties || []).find(p => p.id === booking.propertyId);
                 return (
-                  <div key={booking.id} className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between">
+                  <div key={booking.id} data-testid={`card-booking-${booking.id}`} className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between">
                     <div>
                       <p className="font-medium text-sm">{booking.guestName}</p>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{property?.name}</p>

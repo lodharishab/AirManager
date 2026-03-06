@@ -42,30 +42,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {navItems.map((item) => {
             const isActive = location === item.path;
             return (
-              <Link key={item.path} href={item.path}>
-                <a className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              <Link key={item.path} href={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                   isActive 
                     ? "bg-primary/10 text-primary font-medium" 
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}>
                   <item.icon size={20} />
                   {item.name}
-                </a>
               </Link>
             );
           })}
         </nav>
 
         <div className="p-4 border-t">
-          <Link href="/settings">
-            <a className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+          <Link href="/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               location === "/settings" 
                 ? "bg-primary/10 text-primary font-medium" 
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}>
               <Settings size={20} />
               Settings
-            </a>
           </Link>
         </div>
       </aside>
@@ -114,13 +110,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {navItems.map((item) => {
           const isActive = location === item.path;
           return (
-            <Link key={item.path} href={item.path}>
-              <a className={`flex flex-col items-center gap-1 p-2 ${
+            <Link key={item.path} href={item.path} className={`flex flex-col items-center gap-1 p-2 ${
                 isActive ? "text-primary" : "text-muted-foreground"
               }`}>
                 <item.icon size={20} />
                 <span className="text-[10px] font-medium">{item.name}</span>
-              </a>
             </Link>
           );
         })}
