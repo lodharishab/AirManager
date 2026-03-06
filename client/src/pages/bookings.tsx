@@ -44,22 +44,22 @@ export default function Bookings() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="rounded-xl bg-white shadow-sm border-gray-200">
+          <Button variant="outline" className="rounded-xl shadow-sm">
             <Download className="mr-2 h-4 w-4" /> Export
           </Button>
-          <Button className="rounded-xl shadow-sm">
+          <Button className="rounded-xl shadow-sm text-primary-foreground">
             <CalendarIcon className="mr-2 h-4 w-4" /> Calendar View
           </Button>
         </div>
       </div>
 
-      <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-        <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <Card className="shadow-sm rounded-2xl overflow-hidden">
+        <div className="p-4 border-b bg-muted/20 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search by guest name..." 
-              className="pl-9 rounded-xl border-gray-200 bg-white"
+              className="pl-9 rounded-xl bg-background"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -72,7 +72,7 @@ export default function Bookings() {
                 variant={statusFilter === status ? "default" : "outline"}
                 size="sm"
                 className={`rounded-full capitalize text-xs ${
-                  statusFilter === status ? "" : "bg-white border-gray-200 text-muted-foreground"
+                  statusFilter === status ? "text-primary-foreground" : "text-muted-foreground"
                 }`}
                 onClick={() => setStatusFilter(status)}
               >
@@ -84,8 +84,8 @@ export default function Bookings() {
 
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/50">
-              <TableRow className="hover:bg-transparent">
+            <TableHeader className="bg-muted/20">
+              <TableRow className="hover:bg-transparent border-b-border">
                 <TableHead className="w-[200px]">Guest</TableHead>
                 <TableHead>Property</TableHead>
                 <TableHead>Check In</TableHead>
@@ -99,7 +99,7 @@ export default function Bookings() {
                 filteredBookings.map((booking) => {
                   const property = mockProperties.find(p => p.id === booking.propertyId);
                   return (
-                    <TableRow key={booking.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
+                    <TableRow key={booking.id} className="hover:bg-muted/30 transition-colors cursor-pointer border-b-border/50">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">

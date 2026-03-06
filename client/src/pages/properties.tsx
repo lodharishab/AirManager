@@ -33,12 +33,12 @@ export default function Properties() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search properties..." 
-              className="pl-9 rounded-xl border-gray-200"
+              className="pl-9 rounded-xl"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button className="rounded-xl shrink-0 shadow-sm">
+          <Button className="rounded-xl shrink-0 shadow-sm text-primary-foreground">
             <Plus className="mr-2 h-4 w-4" /> Add Property
           </Button>
         </div>
@@ -46,7 +46,7 @@ export default function Properties() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProperties.map((property) => (
-          <Card key={property.id} className="overflow-hidden rounded-2xl border-none shadow-sm hover:shadow-lg transition-all group bg-white">
+          <Card key={property.id} className="overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-all group">
             <div className="relative aspect-[4/3] overflow-hidden bg-muted">
               <img 
                 src={property.image} 
@@ -56,8 +56,8 @@ export default function Properties() {
               <div className="absolute top-4 right-4 flex gap-2">
                 <Badge className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
                   property.status === 'active' 
-                    ? 'bg-white/90 text-success hover:bg-white' 
-                    : 'bg-white/90 text-accent hover:bg-white'
+                    ? 'bg-background/90 text-success hover:bg-background' 
+                    : 'bg-background/90 text-accent hover:bg-background'
                 }`}>
                   {property.status}
                 </Badge>
@@ -88,7 +88,7 @@ export default function Properties() {
                 </DropdownMenu>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t">
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Nightly Rate</p>
                   <p className="font-semibold text-lg mt-1">₹{property.nightlyRate}</p>
@@ -104,7 +104,7 @@ export default function Properties() {
       </div>
 
       {filteredProperties.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-2xl border border-dashed">
+        <div className="text-center py-20 rounded-2xl border border-dashed border-border/50">
           <Home className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-semibold">No properties found</h3>
           <p className="text-muted-foreground mt-2">Try adjusting your search or add a new property.</p>

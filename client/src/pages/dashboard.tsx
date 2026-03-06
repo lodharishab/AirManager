@@ -30,7 +30,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your properties.</p>
         </div>
         <Link href="/properties">
-          <Button className="bg-primary hover:bg-primary/90 text-white rounded-xl shadow-sm hover:shadow-md transition-all">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm hover:shadow-md transition-all">
             Add New Property
           </Button>
         </Link>
@@ -38,7 +38,7 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
@@ -59,7 +59,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
@@ -80,7 +80,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
@@ -97,7 +97,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
@@ -118,9 +118,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Revenue Chart */}
-        <Card className="lg:col-span-2 rounded-2xl border-none shadow-sm bg-white overflow-hidden">
-          <CardHeader className="border-b bg-gray-50/50 pb-4">
-            <CardTitle className="text-lg font-semibold">Revenue Trend</CardTitle>
+        <Card className="lg:col-span-2 rounded-2xl shadow-sm overflow-hidden">
+          <CardHeader className="border-b bg-muted/20 pb-4">
+            <CardTitle className="text-lg font-semibold text-primary">Revenue Trend</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-[300px] w-full">
@@ -165,9 +165,9 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent Bookings */}
-        <Card className="rounded-2xl border-none shadow-sm bg-white overflow-hidden flex flex-col">
-          <CardHeader className="border-b bg-gray-50/50 pb-4 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Recent Bookings</CardTitle>
+        <Card className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <CardHeader className="border-b bg-muted/20 pb-4 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-primary">Recent Bookings</CardTitle>
             <Link href="/bookings">
               <a className="text-sm text-primary font-medium hover:underline">View All</a>
             </Link>
@@ -177,7 +177,7 @@ export default function Dashboard() {
               {mockBookings.slice(0, 4).map((booking) => {
                 const property = mockProperties.find(p => p.id === booking.propertyId);
                 return (
-                  <div key={booking.id} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                  <div key={booking.id} className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between">
                     <div>
                       <p className="font-medium text-sm">{booking.guestName}</p>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{property?.name}</p>

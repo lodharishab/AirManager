@@ -32,7 +32,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0">
         <div className="p-6 flex items-center gap-2 text-primary font-bold text-2xl">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
             <Home size={18} />
           </div>
           HostSpace
