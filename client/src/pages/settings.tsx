@@ -146,6 +146,33 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="security">
+          <Card className="border-border shadow-sm bg-card/50">
+            <CardHeader className="border-b border-border/50 pb-4">
+              <CardTitle className="font-serif tracking-wide text-primary">Security Settings</CardTitle>
+              <CardDescription>Manage your account security and password.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword" className="text-muted-foreground">Current Password</Label>
+                  <Input id="currentPassword" type="password" className="bg-background border-border" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-muted-foreground">New Password</Label>
+                  <Input id="newPassword" type="password" className="bg-background border-border" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-muted-foreground">Confirm New Password</Label>
+                  <Input id="confirmPassword" type="password" className="bg-background border-border" />
+                </div>
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Update Password</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
