@@ -9,6 +9,8 @@ import AppLayout from "./components/layout/app-layout";
 import Dashboard from "./pages/dashboard";
 import Properties from "./pages/properties";
 import Bookings from "./pages/bookings";
+import Messages from "./pages/messages";
+import Settings from "./pages/settings";
 
 function Router() {
   return (
@@ -17,6 +19,8 @@ function Router() {
         <Route path="/" component={Dashboard}/>
         <Route path="/properties" component={Properties}/>
         <Route path="/bookings" component={Bookings}/>
+        <Route path="/messages" component={Messages}/>
+        <Route path="/settings" component={Settings}/>
         {/* Fallback to 404 */}
         <Route component={NotFound} />
       </Switch>
