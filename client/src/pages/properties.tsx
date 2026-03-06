@@ -24,7 +24,7 @@ export default function Properties() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-serif text-primary">Properties</h1>
           <p className="text-muted-foreground mt-1">Manage your listings and view their performance.</p>
         </div>
         
@@ -46,7 +46,7 @@ export default function Properties() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProperties.map((property) => (
-          <Card key={property.id} className="overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-all group">
+          <Card key={property.id} className="overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-all group border-border">
             <div className="relative aspect-[4/3] overflow-hidden bg-muted">
               <img 
                 src={property.image} 
@@ -67,7 +67,7 @@ export default function Properties() {
             <CardContent className="p-5">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors">{property.name}</h3>
+                  <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors font-serif">{property.name}</h3>
                   <div className="flex items-center text-muted-foreground mt-1 text-sm">
                     <MapPin className="h-3.5 w-3.5 mr-1" />
                     <span className="truncate">{property.address}</span>

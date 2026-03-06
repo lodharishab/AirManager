@@ -26,7 +26,7 @@ export default function Dashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-serif text-primary">Overview</h1>
           <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your properties.</p>
         </div>
         <Link href="/properties">
@@ -38,12 +38,12 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all border-border">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-3xl font-bold">₹{totalMonthlyRevenue.toLocaleString()}</p>
+                <p className="text-3xl font-bold font-serif">₹{totalMonthlyRevenue.toLocaleString()}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
                 <TrendingUp size={20} />
@@ -59,12 +59,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all border-border">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Avg. Occupancy</p>
-                <p className="text-3xl font-bold">{averageOccupancy}%</p>
+                <p className="text-3xl font-bold font-serif">{averageOccupancy}%</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
                 <Users size={20} />
@@ -80,12 +80,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all border-border">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Active Properties</p>
-                <p className="text-3xl font-bold">{activeProperties}<span className="text-lg text-muted-foreground font-normal">/{mockProperties.length}</span></p>
+                <p className="text-3xl font-bold font-serif">{activeProperties}<span className="text-lg text-muted-foreground font-normal font-sans">/{mockProperties.length}</span></p>
               </div>
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Home size={20} />
@@ -97,12 +97,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all border-border">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Upcoming Bookings</p>
-                <p className="text-3xl font-bold">{upcomingBookings}</p>
+                <p className="text-3xl font-bold font-serif">{upcomingBookings}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
                 <CalendarCheck size={20} />
@@ -118,9 +118,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Revenue Chart */}
-        <Card className="lg:col-span-2 rounded-2xl shadow-sm overflow-hidden">
-          <CardHeader className="border-b bg-muted/20 pb-4">
-            <CardTitle className="text-lg font-semibold text-primary">Revenue Trend</CardTitle>
+        <Card className="lg:col-span-2 rounded-2xl shadow-sm overflow-hidden border-border">
+          <CardHeader className="border-b bg-secondary/30 pb-4">
+            <CardTitle className="text-lg font-semibold text-primary font-serif tracking-wide">Revenue Trend</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-[300px] w-full">
@@ -165,9 +165,9 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent Bookings */}
-        <Card className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
-          <CardHeader className="border-b bg-muted/20 pb-4 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-primary">Recent Bookings</CardTitle>
+        <Card className="rounded-2xl shadow-sm overflow-hidden flex flex-col border-border">
+          <CardHeader className="border-b bg-secondary/30 pb-4 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-primary font-serif tracking-wide">Recent Bookings</CardTitle>
             <Link href="/bookings">
               <a className="text-sm text-primary font-medium hover:underline">View All</a>
             </Link>

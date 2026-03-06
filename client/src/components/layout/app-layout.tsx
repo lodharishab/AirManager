@@ -31,7 +31,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0">
-        <div className="p-6 flex items-center gap-2 text-primary font-bold text-2xl">
+        <div className="p-6 flex items-center gap-2 text-primary font-bold text-2xl font-serif">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
             <Home size={18} />
           </div>
@@ -77,7 +77,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <Button variant="ghost" size="icon">
               <Menu size={20} />
             </Button>
-            <div className="text-primary font-bold text-xl">HostSpace</div>
+            <div className="text-primary font-bold text-xl font-serif">HostSpace</div>
           </div>
 
           <div className="hidden md:flex items-center bg-muted/50 rounded-full px-4 py-2 w-96 border focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">

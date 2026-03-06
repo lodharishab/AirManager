@@ -39,7 +39,7 @@ export default function Bookings() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reservations</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-serif text-primary">Reservations</h1>
           <p className="text-muted-foreground mt-1">Manage your upcoming and past bookings.</p>
         </div>
         
@@ -53,8 +53,8 @@ export default function Bookings() {
         </div>
       </div>
 
-      <Card className="shadow-sm rounded-2xl overflow-hidden">
-        <div className="p-4 border-b bg-muted/20 flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <Card className="shadow-sm rounded-2xl overflow-hidden border-border">
+        <div className="p-4 border-b border-border bg-secondary/20 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -84,7 +84,7 @@ export default function Bookings() {
 
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/20">
+            <TableHeader className="bg-secondary/20">
               <TableRow className="hover:bg-transparent border-b-border">
                 <TableHead className="w-[200px]">Guest</TableHead>
                 <TableHead>Property</TableHead>
