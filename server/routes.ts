@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { registerChatRoutes } from "./replit_integrations/chat";
 import {
   insertPropertySchema,
   insertBookingSchema,
@@ -189,6 +190,8 @@ export async function registerRoutes(
 
     res.json({ message: "Seed data created successfully" });
   });
+
+  registerChatRoutes(app);
 
   return httpServer;
 }

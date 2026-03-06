@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 import AppLayout from "./components/layout/app-layout";
+import AIChatbot from "./components/ai-chatbot";
 import Dashboard from "./pages/dashboard";
 import Properties from "./pages/properties";
 import Bookings from "./pages/bookings";
@@ -34,6 +35,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <AIChatbot />
       </TooltipProvider>
     </QueryClientProvider>
   );

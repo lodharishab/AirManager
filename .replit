@@ -32,6 +32,7 @@ waitForPort = 5000
 [agent]
 stack = "MOCKUP_JS"
 mockupState = "FULLSTACK"
+integrations = ["javascript_openai_ai_integrations:2.0.0"]
 
 [[ports]]
 localPort = 5000

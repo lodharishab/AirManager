@@ -23,6 +23,8 @@ A luxury black and gold dark-themed Airbnb rental property management dashboard 
 - `messages` — individual messages within conversations
 - `revenueData` — monthly revenue data points for charts
 - `users` — basic user auth (username/password)
+- `ai_conversations` — AI chatbot conversation threads (shared/models/chat.ts)
+- `ai_messages` — AI chatbot messages with role (user/assistant) (shared/models/chat.ts)
 
 ## API Routes (server/routes.ts)
 All prefixed with `/api`:
@@ -36,6 +38,9 @@ All prefixed with `/api`:
 - `GET /api/revenue` — monthly revenue chart data
 - `GET /api/dashboard/stats` — aggregated dashboard KPIs
 - `POST /api/seed` — auto-seeds initial data if DB is empty
+- `GET/POST /api/ai-chat/conversations` — AI chatbot conversations
+- `GET/DELETE /api/ai-chat/conversations/:id` — single AI conversation
+- `POST /api/ai-chat/conversations/:id/messages` — send message, get streaming AI response
 
 ## Frontend Pages
 - `/` — Dashboard (KPI cards, revenue chart, recent bookings)
@@ -45,14 +50,25 @@ All prefixed with `/api`:
 - `/settings` — Account, notifications, billing, security tabs
 
 ## Key Files
-- `shared/schema.ts` — Drizzle schema + Zod validation
+- `shared/schema.ts` — Drizzle schema + Zod validation (exports models/chat.ts)
+- `shared/models/chat.ts` — AI chatbot schema (ai_conversations, ai_messages)
 - `server/db.ts` — PostgreSQL connection via pg + drizzle
 - `server/storage.ts` — DatabaseStorage class implementing IStorage interface
 - `server/routes.ts` — Express API routes
+- `server/replit_integrations/chat/` — AI chatbot routes and storage (OpenAI integration)
 - `client/src/lib/api.ts` — TanStack Query hooks for all API calls
 - `client/src/lib/queryClient.ts` — Query client config with apiRequest helper
+- `client/src/components/ai-chatbot.tsx` — Floating AI chatbot widget
 - `client/src/index.css` — Tailwind + custom theme variables
 - `public/property-*.jpg` — Property images served statically
+
+## AI Chatbot
+- Floating button (bottom-right) opens a chat panel
+- Uses OpenAI via Replit AI Integrations (gpt-5-mini model)
+- System prompt: HostSpace AI property management assistant for Jaipur
+- Streaming responses via SSE
+- Conversation persistence in `ai_conversations`/`ai_messages` tables
+- API prefix: `/api/ai-chat/` (separate from guest messaging at `/api/conversations`)
 
 ## Auto-Seeding
 The dashboard page auto-triggers `POST /api/seed` when no properties exist, populating:

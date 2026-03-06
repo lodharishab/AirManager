@@ -78,3 +78,5 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type RevenueData = typeof revenueData.$inferSelect;
 export type InsertRevenueData = z.infer<typeof insertRevenueDataSchema>;
+
+export * from "./models/chat";
