@@ -123,7 +123,7 @@ export default function Bookings() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${booking.totalAmount}
+                        ₹{booking.totalAmount}
                       </TableCell>
                     </TableRow>
                   );

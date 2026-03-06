@@ -43,7 +43,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-3xl font-bold">${totalMonthlyRevenue.toLocaleString()}</p>
+                <p className="text-3xl font-bold">₹{totalMonthlyRevenue.toLocaleString()}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
                 <TrendingUp size={20} />
@@ -144,11 +144,11 @@ export default function Dashboard() {
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    tickFormatter={(value) => `$${value/1000}k`}
+                    tickFormatter={(value) => `₹${value/1000}k`}
                   />
                   <Tooltip 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
                   />
                   <Area 
                     type="monotone" 
@@ -186,7 +186,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-sm">${booking.totalAmount}</p>
+                      <p className="font-semibold text-sm">₹{booking.totalAmount}</p>
                       <Badge 
                         variant="outline" 
                         className={`mt-2 text-[10px] uppercase tracking-wider ${

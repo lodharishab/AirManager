@@ -91,7 +91,7 @@ export default function Properties() {
               <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-gray-100">
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Nightly Rate</p>
-                  <p className="font-semibold text-lg mt-1">${property.nightlyRate}</p>
+                  <p className="font-semibold text-lg mt-1">₹{property.nightlyRate}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Occupancy</p>

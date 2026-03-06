@@ -4,7 +4,7 @@ export const mockProperties = [
   {
     id: "1",
     name: "Modern Downtown Loft",
-    address: "123 Main St, Seattle, WA",
+    address: "Bapu Nagar, Jaipur, RJ",
     nightlyRate: 150,
     image: "/src/assets/property-1.jpg",
     status: "active",
@@ -14,7 +14,7 @@ export const mockProperties = [
   {
     id: "2",
     name: "Cozy Mountain Cabin",
-    address: "456 Pine Rd, Leavenworth, WA",
+    address: "Malviya Nagar, Jaipur, RJ",
     nightlyRate: 220,
     image: "/src/assets/property-2.jpg",
     status: "active",
@@ -24,7 +24,7 @@ export const mockProperties = [
   {
     id: "3",
     name: "Luxury Waterfront Villa",
-    address: "789 Ocean Dr, Miami, FL",
+    address: "Vaishali Nagar, Jaipur, RJ",
     nightlyRate: 550,
     image: "/src/assets/property-3.jpg",
     status: "maintenance",
@@ -34,7 +34,7 @@ export const mockProperties = [
   {
     id: "4",
     name: "Sunny Beach House",
-    address: "101 Sand St, San Diego, CA",
+    address: "C-Scheme, Jaipur, RJ",
     nightlyRate: 300,
     image: "/src/assets/property-4.jpg",
     status: "active",
