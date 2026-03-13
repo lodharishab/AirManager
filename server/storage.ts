@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages,
+  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, enquiries,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type PropertyLink, type InsertPropertyLink,
@@ -10,6 +10,7 @@ import {
   type Conversation, type InsertConversation,
   type RevenueData, type InsertRevenueData,
   type GalleryImage, type InsertGalleryImage,
+  type Enquiry, type InsertEnquiry,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -50,6 +51,12 @@ export interface IStorage {
   createGalleryImage(image: InsertGalleryImage): Promise<GalleryImage>;
   updateGalleryImage(id: number, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined>;
   deleteGalleryImage(id: number): Promise<void>;
+
+  getEnquiries(): Promise<Enquiry[]>;
+  getEnquiry(id: number): Promise<Enquiry | undefined>;
+  createEnquiry(enquiry: InsertEnquiry): Promise<Enquiry>;
+  updateEnquiry(id: number, data: Partial<InsertEnquiry>): Promise<Enquiry | undefined>;
+  deleteEnquiry(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -190,6 +197,29 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGalleryImage(id: number): Promise<void> {
     await db.delete(galleryImages).where(eq(galleryImages.id, id));
+  }
+
+  async getEnquiries(): Promise<Enquiry[]> {
+    return db.select().from(enquiries);
+  }
+
+  async getEnquiry(id: number): Promise<Enquiry | undefined> {
+    const [enquiry] = await db.select().from(enquiries).where(eq(enquiries.id, id));
+    return enquiry;
+  }
+
+  async createEnquiry(enquiry: InsertEnquiry): Promise<Enquiry> {
+    const [created] = await db.insert(enquiries).values(enquiry).returning();
+    return created;
+  }
+
+  async updateEnquiry(id: number, data: Partial<InsertEnquiry>): Promise<Enquiry | undefined> {
+    const [updated] = await db.update(enquiries).set(data).where(eq(enquiries.id, id)).returning();
+    return updated;
+  }
+
+  async deleteEnquiry(id: number): Promise<void> {
+    await db.delete(enquiries).where(eq(enquiries.id, id));
   }
 }
 

@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage } from "@shared/schema";
+import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage, Enquiry } from "@shared/schema";
 
 export function useProperties() {
   return useQuery<Property[]>({
@@ -216,6 +216,47 @@ export function useImportFromDrive() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+    },
+  });
+}
+
+export function useEnquiries() {
+  return useQuery<Enquiry[]>({
+    queryKey: ["/api/enquiries"],
+  });
+}
+
+export function useCreateEnquiry() {
+  return useMutation({
+    mutationFn: async (data: Omit<Enquiry, "id" | "createdAt">) => {
+      const res = await apiRequest("POST", "/api/enquiries", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/enquiries"] });
+    },
+  });
+}
+
+export function useUpdateEnquiry() {
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<Enquiry> & { id: number }) => {
+      const res = await apiRequest("PATCH", `/api/enquiries/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/enquiries"] });
+    },
+  });
+}
+
+export function useDeleteEnquiry() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/enquiries/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/enquiries"] });
     },
   });
 }

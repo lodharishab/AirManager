@@ -9,7 +9,8 @@ import {
   Bell,
   Search,
   Menu,
-  ImageIcon
+  ImageIcon,
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +27,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: "Properties", path: "/properties", icon: Home },
     { name: "Bookings", path: "/bookings", icon: CalendarDays },
     { name: "Messages", path: "/messages", icon: MessageSquare },
+    { name: "Enquiries", path: "/enquiries", icon: HelpCircle },
     { name: "Gallery", path: "/gallery", icon: ImageIcon },
   ];
 

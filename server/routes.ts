@@ -10,6 +10,7 @@ import {
   insertMessageSchema,
   insertConversationSchema,
   insertGalleryImageSchema,
+  insertEnquirySchema,
 } from "@shared/schema";
 import { importFromGoogleDrive, extractFolderId } from "./google-drive";
 
@@ -331,6 +332,17 @@ export async function registerRoutes(
       await storage.createRevenueData(r);
     }
 
+    const seedEnquiries = [
+      { propertyId: createdProperties[0].id, guestName: "Amit Patel", guestEmail: "amit.patel@email.com", guestPhone: "+91 98765 43210", message: "We are a family of 6 looking to stay for a week in December. Is the haveli available during Christmas week? Also, do you offer any special rates for longer stays?", status: "new", createdAt: new Date(now.getTime() - 1 * 86400000).toISOString() },
+      { propertyId: createdProperties[1].id, guestName: "Priya Sharma", guestEmail: "priya.s@email.com", guestPhone: "+91 91234 56789", message: "Hi, I'm interested in booking the apartment for a corporate retreat. Can we arrange for 3 apartments for 4 nights in January?", status: "responded", createdAt: new Date(now.getTime() - 3 * 86400000).toISOString() },
+      { propertyId: createdProperties[2].id, guestName: "David Thompson", guestEmail: "david.t@email.com", guestPhone: "+44 7700 900123", message: "We are celebrating our anniversary and would love to book the palace suite. Is there a honeymoon or anniversary package available?", status: "converted", createdAt: new Date(now.getTime() - 7 * 86400000).toISOString() },
+      { propertyId: createdProperties[3].id, guestName: "Meera Gupta", guestEmail: "meera.g@email.com", guestPhone: "+91 88888 77777", message: "Is the studio pet-friendly? I have a small dog. Also wondering about parking availability.", status: "closed", createdAt: new Date(now.getTime() - 14 * 86400000).toISOString() },
+    ];
+
+    for (const e of seedEnquiries) {
+      await storage.createEnquiry(e);
+    }
+
     res.json({ message: "Seed data created successfully" });
   });
 
@@ -550,6 +562,46 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
         res.status(500).json({ message: error.message || "AI enrichment failed" });
       }
     }
+  });
+
+  app.get("/api/enquiries", async (_req, res) => {
+    const allEnquiries = await storage.getEnquiries();
+    res.json(allEnquiries);
+  });
+
+  app.get("/api/enquiries/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid enquiry ID" });
+    const enquiry = await storage.getEnquiry(id);
+    if (!enquiry) return res.status(404).json({ message: "Enquiry not found" });
+    res.json(enquiry);
+  });
+
+  app.post("/api/enquiries", async (req, res) => {
+    const data = { ...req.body, createdAt: new Date().toISOString() };
+    const parsed = insertEnquirySchema.safeParse(data);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const enquiry = await storage.createEnquiry(parsed.data);
+    res.status(201).json(enquiry);
+  });
+
+  app.patch("/api/enquiries/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid enquiry ID" });
+    const validStatuses = ["new", "responded", "converted", "closed"];
+    if (req.body.status && !validStatuses.includes(req.body.status)) {
+      return res.status(400).json({ message: "Invalid status. Must be one of: new, responded, converted, closed" });
+    }
+    const updated = await storage.updateEnquiry(id, req.body);
+    if (!updated) return res.status(404).json({ message: "Enquiry not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/enquiries/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid enquiry ID" });
+    await storage.deleteEnquiry(id);
+    res.status(204).send();
   });
 
   registerChatRoutes(app);
