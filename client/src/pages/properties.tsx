@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useProperties, useCreateProperty, useDeleteProperty } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Search, Plus, MoreHorizontal, Home, Loader2 } from "lucide-react";
+import { MapPin, Search, Plus, MoreHorizontal, Home, Loader2, Bed, Bath, Users } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -150,42 +151,51 @@ export default function Properties() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProperties.map((property) => (
           <Card key={property.id} data-testid={`card-property-${property.id}`} className="overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-all group border-border">
-            <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-              <img 
-                src={property.imageUrl || "/property-1.jpg"} 
-                alt={property.name}
-                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute top-4 right-4 flex gap-2">
-                <Badge className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                  property.status === 'active' 
-                    ? 'bg-background/90 text-success hover:bg-background' 
-                    : 'bg-background/90 text-accent hover:bg-background'
-                }`}>
-                  {property.status}
-                </Badge>
+            <Link href={`/properties/${property.id}`} className="block">
+              <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                <img 
+                  src={property.imageUrl || "/property-1.jpg"} 
+                  alt={property.name}
+                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <Badge className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                    property.status === 'active' 
+                      ? 'bg-background/90 text-success hover:bg-background' 
+                      : 'bg-background/90 text-accent hover:bg-background'
+                  }`}>
+                    {property.status}
+                  </Badge>
+                </div>
+                {property.propertyType && (
+                  <div className="absolute top-4 left-4">
+                    <Badge className="bg-background/90 text-foreground hover:bg-background px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
+                      {property.propertyType}
+                    </Badge>
+                  </div>
+                )}
               </div>
-            </div>
+            </Link>
             
             <CardContent className="p-5">
               <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors font-serif">{property.name}</h3>
+                <Link href={`/properties/${property.id}`} className="flex-1 min-w-0">
+                  <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors font-serif cursor-pointer">{property.name}</h3>
                   <div className="flex items-center text-muted-foreground mt-1 text-sm">
-                    <MapPin className="h-3.5 w-3.5 mr-1" />
+                    <MapPin className="h-3.5 w-3.5 mr-1 shrink-0" />
                     <span className="truncate">{property.address}</span>
                   </div>
-                </div>
+                </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2 shrink-0">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rounded-xl">
-                    <DropdownMenuItem>Edit Property</DropdownMenuItem>
-                    <DropdownMenuItem>Manage Calendar</DropdownMenuItem>
-                    <DropdownMenuItem>View Analytics</DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/properties/${property.id}`}>View Details</Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={() => handleDeleteProperty(property.id)}
@@ -196,10 +206,24 @@ export default function Properties() {
                 </DropdownMenu>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t">
+              {(property.bedrooms || property.bathrooms || property.maxGuests) && (
+                <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                  {property.bedrooms && (
+                    <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{property.bedrooms} bed{property.bedrooms > 1 ? "s" : ""}</span>
+                  )}
+                  {property.bathrooms && (
+                    <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{property.bathrooms} bath</span>
+                  )}
+                  {property.maxGuests && (
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{property.maxGuests} guests</span>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Nightly Rate</p>
-                  <p className="font-semibold text-lg mt-1">₹{property.nightlyRate}</p>
+                  <p className="font-semibold text-lg mt-1">₹{property.nightlyRate.toLocaleString("en-IN")}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Occupancy</p>

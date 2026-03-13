@@ -9,6 +9,7 @@ import AppLayout from "./components/layout/app-layout";
 import AIChatbot from "./components/ai-chatbot";
 import Dashboard from "./pages/dashboard";
 import Properties from "./pages/properties";
+import PropertyDetail from "./pages/property-detail";
 import Bookings from "./pages/bookings";
 import Messages from "./pages/messages";
 import Settings from "./pages/settings";
@@ -19,10 +20,10 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard}/>
         <Route path="/properties" component={Properties}/>
+        <Route path="/properties/:id" component={PropertyDetail}/>
         <Route path="/bookings" component={Bookings}/>
         <Route path="/messages" component={Messages}/>
         <Route path="/settings" component={Settings}/>
-        {/* Fallback to 404 */}
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

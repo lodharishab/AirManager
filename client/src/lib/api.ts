@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, Booking, Conversation, Message, RevenueData } from "@shared/schema";
+import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData } from "@shared/schema";
 
 export function useProperties() {
   return useQuery<Property[]>({
@@ -49,7 +49,7 @@ export function useDashboardStats() {
 
 export function useCreateProperty() {
   return useMutation({
-    mutationFn: async (data: Omit<Property, "id">) => {
+    mutationFn: async (data: Partial<Omit<Property, "id">> & { name: string; address: string; nightlyRate: number }) => {
       const res = await apiRequest("POST", "/api/properties", data);
       return res.json();
     },
@@ -81,6 +81,37 @@ export function useDeleteProperty() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+    },
+  });
+}
+
+export function useProperty(id: number | undefined) {
+  return useQuery<Property & { links: PropertyLink[]; bookings: Booking[] }>({
+    queryKey: ["/api/properties", id],
+    enabled: !!id,
+  });
+}
+
+export function useCreatePropertyLink() {
+  return useMutation({
+    mutationFn: async ({ propertyId, ...data }: { propertyId: number; label: string; url: string; linkType: string }) => {
+      const res = await apiRequest("POST", `/api/properties/${propertyId}/links`, data);
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId] });
+    },
+  });
+}
+
+export function useDeletePropertyLink() {
+  return useMutation({
+    mutationFn: async ({ linkId, propertyId }: { linkId: number; propertyId: number }) => {
+      await apiRequest("DELETE", `/api/property-links/${linkId}`);
+      return propertyId;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId] });
     },
   });
 }

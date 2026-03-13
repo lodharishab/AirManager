@@ -17,7 +17,8 @@ A luxury black and gold dark-themed Airbnb rental property management dashboard 
 - **Location**: Jaipur, India context for all properties
 
 ## Data Model (shared/schema.ts)
-- `properties` — rental listings with name, address, nightly rate, status, occupancy, revenue
+- `properties` — rental listings with full details: name, address, nightly rate, status, occupancy, revenue, description, propertyType, bedrooms, bathrooms, maxGuests, squareFeet, amenities (array), checkInTime, checkOutTime, minimumStay, houseRules, neighborhood
+- `propertyLinks` — external links for properties (Airbnb, Booking.com, Google Maps, etc.) with label, url, linkType
 - `bookings` — guest reservations linked to properties with check-in/out dates
 - `conversations` — guest messaging threads
 - `messages` — individual messages within conversations
@@ -44,7 +45,8 @@ All prefixed with `/api`:
 
 ## Frontend Pages
 - `/` — Dashboard (KPI cards, revenue chart, recent bookings)
-- `/properties` — Property grid with create/delete functionality
+- `/properties` — Property grid with create/delete, clickable cards linking to detail
+- `/properties/:id` — Property detail page (full info, amenities, house rules, bookings, links management)
 - `/bookings` — Bookings table with filters and create dialog
 - `/messages` — Chat UI with conversations and messaging
 - `/settings` — Account, notifications, billing, security tabs

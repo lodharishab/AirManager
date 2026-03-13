@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, bookings, messages, conversations, revenueData,
+  users, properties, propertyLinks, bookings, messages, conversations, revenueData,
   type User, type InsertUser,
   type Property, type InsertProperty,
+  type PropertyLink, type InsertPropertyLink,
   type Booking, type InsertBooking,
   type Message, type InsertMessage,
   type Conversation, type InsertConversation,
@@ -20,6 +21,11 @@ export interface IStorage {
   createProperty(property: InsertProperty): Promise<Property>;
   updateProperty(id: number, property: Partial<InsertProperty>): Promise<Property | undefined>;
   deleteProperty(id: number): Promise<void>;
+
+  getPropertyLinks(propertyId: number): Promise<PropertyLink[]>;
+  createPropertyLink(link: InsertPropertyLink): Promise<PropertyLink>;
+  updatePropertyLink(id: number, data: Partial<InsertPropertyLink>): Promise<PropertyLink | undefined>;
+  deletePropertyLink(id: number): Promise<void>;
 
   getBookings(): Promise<Booking[]>;
   getBooking(id: number): Promise<Booking | undefined>;
@@ -74,7 +80,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProperty(id: number): Promise<void> {
+    await db.delete(propertyLinks).where(eq(propertyLinks.propertyId, id));
     await db.delete(properties).where(eq(properties.id, id));
+  }
+
+  async getPropertyLinks(propertyId: number): Promise<PropertyLink[]> {
+    return db.select().from(propertyLinks).where(eq(propertyLinks.propertyId, propertyId));
+  }
+
+  async createPropertyLink(link: InsertPropertyLink): Promise<PropertyLink> {
+    const [created] = await db.insert(propertyLinks).values(link).returning();
+    return created;
+  }
+
+  async updatePropertyLink(id: number, data: Partial<InsertPropertyLink>): Promise<PropertyLink | undefined> {
+    const [updated] = await db.update(propertyLinks).set(data).where(eq(propertyLinks.id, id)).returning();
+    return updated;
+  }
+
+  async deletePropertyLink(id: number): Promise<void> {
+    await db.delete(propertyLinks).where(eq(propertyLinks.id, id));
   }
 
   async getBookings(): Promise<Booking[]> {
