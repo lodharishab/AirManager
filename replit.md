@@ -72,6 +72,14 @@ All prefixed with `/api`:
 - Conversation persistence in `ai_conversations`/`ai_messages` tables
 - API prefix: `/api/ai-chat/` (separate from guest messaging at `/api/conversations`)
 
+## AI Property Enrichment
+- On property detail page, "AI Enrich" button appears when links are saved
+- Fetches content from all saved links (Airbnb, Booking.com, etc.)
+- AI extracts structured property data (description, amenities, bedrooms, etc.)
+- User reviews extracted fields with checkboxes before applying
+- Shows current vs. new values with NEW/UPDATE badges
+- API: `POST /api/properties/:id/ai-enrich` (streaming SSE)
+
 ## Auto-Seeding
 The dashboard page auto-triggers `POST /api/seed` when no properties exist, populating:
 - 4 properties in Jaipur neighborhoods

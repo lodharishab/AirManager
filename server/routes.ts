@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import OpenAI from "openai";
 import { storage } from "./storage";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import {
@@ -9,6 +10,11 @@ import {
   insertMessageSchema,
   insertConversationSchema,
 } from "@shared/schema";
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -324,6 +330,156 @@ export async function registerRoutes(
     }
 
     res.json({ message: "Seed data created successfully" });
+  });
+
+  app.post("/api/properties/:id/ai-enrich", async (req, res) => {
+    try {
+      const propertyId = Number(req.params.id);
+      const property = await storage.getProperty(propertyId);
+      if (!property) return res.status(404).json({ message: "Property not found" });
+
+      const links = await storage.getPropertyLinks(propertyId);
+      if (links.length === 0) {
+        return res.status(400).json({ message: "No links available to fetch data from. Add some links first." });
+      }
+
+      const fetchResults: Array<{ label: string; url: string; linkType: string; content: string }> = [];
+
+      for (const link of links) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000);
+          const response = await fetch(link.url, {
+            signal: controller.signal,
+            headers: {
+              "User-Agent": "Mozilla/5.0 (compatible; HostSpaceBot/1.0)",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+          });
+          clearTimeout(timeout);
+
+          if (response.ok) {
+            let text = await response.text();
+            text = text
+              .replace(/<script[\s\S]*?<\/script>/gi, "")
+              .replace(/<style[\s\S]*?<\/style>/gi, "")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+            fetchResults.push({
+              label: link.label,
+              url: link.url,
+              linkType: link.linkType,
+              content: text.slice(0, 4000),
+            });
+          } else {
+            fetchResults.push({
+              label: link.label,
+              url: link.url,
+              linkType: link.linkType,
+              content: `[Could not fetch: HTTP ${response.status}]`,
+            });
+          }
+        } catch (err: any) {
+          fetchResults.push({
+            label: link.label,
+            url: link.url,
+            linkType: link.linkType,
+            content: `[Could not fetch: ${err.message || "timeout/error"}]`,
+          });
+        }
+      }
+
+      const currentPropertyJson = JSON.stringify({
+        name: property.name,
+        address: property.address,
+        description: property.description,
+        propertyType: property.propertyType,
+        nightlyRate: property.nightlyRate,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        maxGuests: property.maxGuests,
+        squareFeet: property.squareFeet,
+        amenities: property.amenities,
+        checkInTime: property.checkInTime,
+        checkOutTime: property.checkOutTime,
+        minimumStay: property.minimumStay,
+        houseRules: property.houseRules,
+        neighborhood: property.neighborhood,
+      }, null, 2);
+
+      const linkDataSummary = fetchResults.map(r =>
+        `--- ${r.label} (${r.linkType}) [${r.url}] ---\n${r.content}`
+      ).join("\n\n");
+
+      const systemPrompt = `You are a property data extraction assistant for a luxury rental property management business in Jaipur, India. Your job is to analyze content fetched from various listing platforms and resources, then extract and structure property details.
+
+You will receive:
+1. The current property data we already have
+2. Content scraped from various links (Airbnb, Booking.com, Google Maps, OTAs, etc.)
+
+Analyze all the fetched content and extract any useful property information. Return a JSON object with ONLY the fields where you found new or better information than what we currently have. Do not include fields where the current data is already good or where you found nothing useful.
+
+The fields you can return are:
+- name (string): Property name
+- description (string): A compelling, detailed description
+- propertyType (string): one of "apartment", "haveli", "villa", "studio", "bungalow", "penthouse"
+- nightlyRate (number): Nightly rate in INR (₹)
+- bedrooms (number)
+- bathrooms (number)
+- maxGuests (number)
+- squareFeet (number): Area in square feet
+- amenities (string[]): List of amenities
+- checkInTime (string): e.g. "14:00"
+- checkOutTime (string): e.g. "11:00"
+- minimumStay (number): Minimum nights
+- houseRules (string): House rules text
+- neighborhood (string): Neighbourhood/area name
+- address (string): Full address
+
+Also include a "summary" field (string) explaining what information you found and from which sources, and any recommendations.
+
+Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.`;
+
+      const userMessage = `Current property data:\n${currentPropertyJson}\n\nFetched content from links:\n${linkDataSummary}`;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-5-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        stream: true,
+        max_completion_tokens: 4096,
+        temperature: 0.3,
+      });
+
+      let fullResponse = "";
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          fullResponse += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true, fullResponse })}\n\n`);
+      res.end();
+    } catch (error: any) {
+      console.error("AI enrich error:", error);
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ error: error.message || "AI enrichment failed" })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ message: error.message || "AI enrichment failed" });
+      }
+    }
   });
 
   registerChatRoutes(app);
