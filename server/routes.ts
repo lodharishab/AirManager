@@ -456,7 +456,6 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
         ],
         stream: true,
         max_completion_tokens: 4096,
-        temperature: 0.3,
       });
 
       let fullResponse = "";
