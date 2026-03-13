@@ -12,6 +12,7 @@ import Properties from "./pages/properties";
 import PropertyDetail from "./pages/property-detail";
 import Bookings from "./pages/bookings";
 import Messages from "./pages/messages";
+import Gallery from "./pages/gallery";
 import Settings from "./pages/settings";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/properties/:id" component={PropertyDetail}/>
         <Route path="/bookings" component={Bookings}/>
         <Route path="/messages" component={Messages}/>
+        <Route path="/gallery" component={Gallery}/>
         <Route path="/settings" component={Settings}/>
         <Route component={NotFound} />
       </Switch>

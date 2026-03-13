@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData } from "@shared/schema";
+import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage } from "@shared/schema";
 
 export function useProperties() {
   return useQuery<Property[]>({
@@ -163,6 +163,59 @@ export function useSeedData() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
+    },
+  });
+}
+
+export function useGalleryImages() {
+  return useQuery<GalleryImage[]>({
+    queryKey: ["/api/gallery"],
+  });
+}
+
+export function useCreateGalleryImage() {
+  return useMutation({
+    mutationFn: async (data: { imageUrl: string; title?: string; tags?: string[]; starRating?: number; propertyId?: number; source?: string }) => {
+      const res = await apiRequest("POST", "/api/gallery", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+    },
+  });
+}
+
+export function useUpdateGalleryImage() {
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number } & Partial<GalleryImage>) => {
+      const res = await apiRequest("PATCH", `/api/gallery/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+    },
+  });
+}
+
+export function useDeleteGalleryImage() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/gallery/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+    },
+  });
+}
+
+export function useImportFromDrive() {
+  return useMutation({
+    mutationFn: async (data: { folderUrl: string; propertyId?: number }) => {
+      const res = await apiRequest("POST", "/api/gallery/import-drive", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
     },
   });
 }

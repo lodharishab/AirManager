@@ -8,7 +8,8 @@ import {
   MessageSquare,
   Bell,
   Search,
-  Menu
+  Menu,
+  ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: "Properties", path: "/properties", icon: Home },
     { name: "Bookings", path: "/bookings", icon: CalendarDays },
     { name: "Messages", path: "/messages", icon: MessageSquare },
+    { name: "Gallery", path: "/gallery", icon: ImageIcon },
   ];
 
   return (

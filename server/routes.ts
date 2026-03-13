@@ -9,7 +9,9 @@ import {
   insertBookingSchema,
   insertMessageSchema,
   insertConversationSchema,
+  insertGalleryImageSchema,
 } from "@shared/schema";
+import { importFromGoogleDrive, extractFolderId } from "./google-drive";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -330,6 +332,75 @@ export async function registerRoutes(
     }
 
     res.json({ message: "Seed data created successfully" });
+  });
+
+  app.get("/api/gallery", async (_req, res) => {
+    const images = await storage.getGalleryImages();
+    res.json(images);
+  });
+
+  app.get("/api/gallery/property/:propertyId", async (req, res) => {
+    const images = await storage.getGalleryImagesByProperty(Number(req.params.propertyId));
+    res.json(images);
+  });
+
+  app.post("/api/gallery", async (req, res) => {
+    const data = { ...req.body, createdAt: new Date().toISOString() };
+    const parsed = insertGalleryImageSchema.safeParse(data);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const image = await storage.createGalleryImage(parsed.data);
+    res.status(201).json(image);
+  });
+
+  app.patch("/api/gallery/:id", async (req, res) => {
+    const { title, tags, starRating, propertyId } = req.body;
+    const updateData: Record<string, any> = {};
+    if (title !== undefined) updateData.title = title;
+    if (tags !== undefined) {
+      if (!Array.isArray(tags) || !tags.every((t: any) => typeof t === "string")) {
+        return res.status(400).json({ message: "tags must be an array of strings" });
+      }
+      updateData.tags = tags;
+    }
+    if (starRating !== undefined) {
+      const rating = Number(starRating);
+      if (isNaN(rating) || rating < 0 || rating > 5) {
+        return res.status(400).json({ message: "starRating must be between 0 and 5" });
+      }
+      updateData.starRating = rating;
+    }
+    if (propertyId !== undefined) {
+      if (propertyId !== null) {
+        const prop = await storage.getProperty(Number(propertyId));
+        if (!prop) return res.status(400).json({ message: "Property not found" });
+        updateData.propertyId = Number(propertyId);
+      } else {
+        updateData.propertyId = null;
+      }
+    }
+    const updated = await storage.updateGalleryImage(Number(req.params.id), updateData);
+    if (!updated) return res.status(404).json({ message: "Image not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/gallery/:id", async (req, res) => {
+    await storage.deleteGalleryImage(Number(req.params.id));
+    res.status(204).send();
+  });
+
+  app.post("/api/gallery/import-drive", async (req, res) => {
+    try {
+      const { folderUrl, propertyId } = req.body;
+      if (!folderUrl) return res.status(400).json({ message: "Folder URL or ID is required" });
+
+      const folderId = extractFolderId(folderUrl);
+      if (!folderId) return res.status(400).json({ message: "Could not extract folder ID from the provided URL" });
+
+      const imported = await importFromGoogleDrive(folderId, propertyId || undefined);
+      res.json({ message: `Imported ${imported} image(s) from Google Drive`, imported });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to import from Google Drive" });
+    }
   });
 
   app.post("/api/properties/:id/ai-enrich", async (req, res) => {

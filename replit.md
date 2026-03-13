@@ -23,6 +23,7 @@ A luxury black and gold dark-themed Airbnb rental property management dashboard 
 - `conversations` — guest messaging threads
 - `messages` — individual messages within conversations
 - `revenueData` — monthly revenue data points for charts
+- `galleryImages` — photo gallery with imageUrl, title, tags (array), starRating, source (manual/google_drive), driveFileId, propertyId (optional)
 - `users` — basic user auth (username/password)
 - `ai_conversations` — AI chatbot conversation threads (shared/models/chat.ts)
 - `ai_messages` — AI chatbot messages with role (user/assistant) (shared/models/chat.ts)
@@ -39,6 +40,10 @@ All prefixed with `/api`:
 - `GET /api/revenue` — monthly revenue chart data
 - `GET /api/dashboard/stats` — aggregated dashboard KPIs
 - `POST /api/seed` — auto-seeds initial data if DB is empty
+- `GET/POST /api/gallery` — list/create gallery images
+- `PATCH/DELETE /api/gallery/:id` — update/delete gallery image
+- `GET /api/gallery/property/:propertyId` — images by property
+- `POST /api/gallery/import-drive` — import images from Google Drive folder
 - `GET/POST /api/ai-chat/conversations` — AI chatbot conversations
 - `GET/DELETE /api/ai-chat/conversations/:id` — single AI conversation
 - `POST /api/ai-chat/conversations/:id/messages` — send message, get streaming AI response
@@ -49,6 +54,7 @@ All prefixed with `/api`:
 - `/properties/:id` — Property detail page (full info, amenities, house rules, bookings, links management)
 - `/bookings` — Bookings table with filters and create dialog
 - `/messages` — Chat UI with conversations and messaging
+- `/gallery` — Photo gallery with search, tag/star/property filters, add/edit/delete, Google Drive import
 - `/settings` — Account, notifications, billing, security tabs
 
 ## Key Files
@@ -61,6 +67,8 @@ All prefixed with `/api`:
 - `client/src/lib/api.ts` — TanStack Query hooks for all API calls
 - `client/src/lib/queryClient.ts` — Query client config with apiRequest helper
 - `client/src/components/ai-chatbot.tsx` — Floating AI chatbot widget
+- `client/src/pages/gallery.tsx` — Photo gallery page with filters, tags, ratings
+- `server/google-drive.ts` — Google Drive folder import (ready for when API key is configured)
 - `client/src/index.css` — Tailwind + custom theme variables
 - `public/property-*.jpg` — Property images served statically
 

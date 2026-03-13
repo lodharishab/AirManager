@@ -75,6 +75,18 @@ export const revenueData = pgTable("revenue_data", {
   revenue: integer("revenue").notNull(),
 });
 
+export const galleryImages = pgTable("gallery_images", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id"),
+  imageUrl: text("image_url").notNull(),
+  title: text("title"),
+  tags: text("tags").array(),
+  starRating: integer("star_rating").default(0),
+  source: text("source").default("manual"),
+  driveFileId: text("drive_file_id"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -86,6 +98,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true 
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true });
 export const insertRevenueDataSchema = createInsertSchema(revenueData).omit({ id: true });
+export const insertGalleryImageSchema = createInsertSchema(galleryImages).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -101,5 +114,7 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type RevenueData = typeof revenueData.$inferSelect;
 export type InsertRevenueData = z.infer<typeof insertRevenueDataSchema>;
+export type GalleryImage = typeof galleryImages.$inferSelect;
+export type InsertGalleryImage = z.infer<typeof insertGalleryImageSchema>;
 
 export * from "./models/chat";
