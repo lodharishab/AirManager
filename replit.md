@@ -24,6 +24,7 @@ A luxury black and gold dark-themed Airbnb rental property management dashboard 
 - `messages` — individual messages within conversations
 - `revenueData` — monthly revenue data points for charts
 - `galleryImages` — photo gallery with imageUrl, title, tags (array), starRating, source (manual/google_drive), driveFileId, propertyId (optional)
+- `enquiries` — guest enquiries with propertyId, guestName, guestEmail, guestPhone, message, status (new/responded/converted/closed)
 - `users` — basic user auth (username/password)
 - `ai_conversations` — AI chatbot conversation threads (shared/models/chat.ts)
 - `ai_messages` — AI chatbot messages with role (user/assistant) (shared/models/chat.ts)
@@ -44,6 +45,8 @@ All prefixed with `/api`:
 - `PATCH/DELETE /api/gallery/:id` — update/delete gallery image
 - `GET /api/gallery/property/:propertyId` — images by property
 - `POST /api/gallery/import-drive` — import images from Google Drive folder
+- `GET/POST /api/enquiries` — list/create enquiries
+- `GET/PATCH/DELETE /api/enquiries/:id` — single enquiry CRUD (status: new/responded/converted/closed)
 - `GET/POST /api/ai-chat/conversations` — AI chatbot conversations
 - `GET/DELETE /api/ai-chat/conversations/:id` — single AI conversation
 - `POST /api/ai-chat/conversations/:id/messages` — send message, get streaming AI response
@@ -55,6 +58,7 @@ All prefixed with `/api`:
 - `/bookings` — Bookings table with filters and create dialog
 - `/messages` — Chat UI with conversations and messaging
 - `/gallery` — Photo gallery with search, tag/star/property filters, add/edit/delete, Google Drive import
+- `/enquiries` — Enquiry management with table view, status tracking, search/filter, add/delete
 - `/settings` — Account, notifications, billing, security tabs
 
 ## Key Files
