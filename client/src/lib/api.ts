@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage, Enquiry } from "@shared/schema";
+import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage, Enquiry, Room } from "@shared/schema";
 
 export function useProperties() {
   return useQuery<Property[]>({
@@ -86,7 +86,7 @@ export function useDeleteProperty() {
 }
 
 export function useProperty(id: number | undefined) {
-  return useQuery<Property & { links: PropertyLink[]; bookings: Booking[] }>({
+  return useQuery<Property & { links: PropertyLink[]; bookings: Booking[]; rooms: Room[] }>({
     queryKey: ["/api/properties", id],
     enabled: !!id,
   });
@@ -112,6 +112,58 @@ export function useDeletePropertyLink() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId] });
+    },
+  });
+}
+
+export function useAllRooms() {
+  return useQuery<Room[]>({
+    queryKey: ["/api/rooms"],
+  });
+}
+
+export function useRoomsByProperty(propertyId: number | undefined) {
+  return useQuery<Room[]>({
+    queryKey: ["/api/properties", propertyId, "rooms"],
+    enabled: !!propertyId,
+  });
+}
+
+export function useCreateRoom() {
+  return useMutation({
+    mutationFn: async ({ propertyId, ...data }: { propertyId: number; roomType: string; roomCount: number; nightlyRate: number }) => {
+      const res = await apiRequest("POST", `/api/properties/${propertyId}/rooms`, data);
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId, "rooms"] });
+    },
+  });
+}
+
+export function useUpdateRoom() {
+  return useMutation({
+    mutationFn: async ({ id, propertyId, ...data }: { id: number; propertyId: number; roomType?: string; roomCount?: number; nightlyRate?: number }) => {
+      const res = await apiRequest("PATCH", `/api/rooms/${id}`, data);
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId, "rooms"] });
+    },
+  });
+}
+
+export function useDeleteRoom() {
+  return useMutation({
+    mutationFn: async ({ id, propertyId }: { id: number; propertyId: number }) => {
+      await apiRequest("DELETE", `/api/rooms/${id}`);
+      return propertyId;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", variables.propertyId, "rooms"] });
     },
   });
 }

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useBookings, useProperties, useCreateBooking } from "@/lib/api";
+import { useState, useEffect, useMemo } from "react";
+import { useBookings, useProperties, useCreateBooking, useRoomsByProperty, useAllRooms } from "@/lib/api";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,10 +47,39 @@ export default function Bookings() {
     checkOut: "",
     status: "upcoming",
     totalAmount: 0,
+    roomId: null as number | null,
+    roomCount: null as number | null,
   });
+
+  const selectedProperty = (properties || []).find(p => p.id === newBooking.propertyId);
+  const isRoomBased = selectedProperty?.bookingMode === "room_based";
+  const { data: propertyRooms } = useRoomsByProperty(isRoomBased ? newBooking.propertyId : undefined);
+
+  const selectedRoom = useMemo(() => {
+    if (!newBooking.roomId || !propertyRooms) return null;
+    return propertyRooms.find(r => r.id === newBooking.roomId) || null;
+  }, [newBooking.roomId, propertyRooms]);
+
+  useEffect(() => {
+    if (selectedRoom && newBooking.checkIn && newBooking.checkOut && newBooking.roomCount) {
+      const checkIn = new Date(newBooking.checkIn);
+      const checkOut = new Date(newBooking.checkOut);
+      const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
+      setNewBooking(b => ({ ...b, totalAmount: selectedRoom.nightlyRate * newBooking.roomCount! * nights }));
+    }
+  }, [selectedRoom, newBooking.checkIn, newBooking.checkOut, newBooking.roomCount]);
 
   const allBookings = bookings || [];
   const allProperties = properties || [];
+
+  const { data: allRoomsData } = useAllRooms();
+  const roomsMap = useMemo(() => {
+    const map: Record<number, { roomType: string; nightlyRate: number }> = {};
+    if (allRoomsData) {
+      allRoomsData.forEach(r => { map[r.id] = { roomType: r.roomType, nightlyRate: r.nightlyRate }; });
+    }
+    return map;
+  }, [allRoomsData]);
 
   const filteredBookings = allBookings.filter(booking => {
     const matchesSearch = booking.guestName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -73,15 +102,25 @@ export default function Bookings() {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
-    createBooking.mutate({
-      ...newBooking,
+    if (isRoomBased && (!newBooking.roomId || !newBooking.roomCount)) {
+      toast({ title: "Please select a room type and number of rooms", variant: "destructive" });
+      return;
+    }
+    const bookingData = {
+      propertyId: newBooking.propertyId,
+      guestName: newBooking.guestName,
       checkIn: new Date(newBooking.checkIn).toISOString(),
       checkOut: new Date(newBooking.checkOut).toISOString(),
-    }, {
+      status: newBooking.status,
+      totalAmount: newBooking.totalAmount,
+      roomId: isRoomBased ? newBooking.roomId : null,
+      roomCount: isRoomBased ? newBooking.roomCount : null,
+    };
+    createBooking.mutate(bookingData, {
       onSuccess: () => {
         toast({ title: "Booking created successfully" });
         setDialogOpen(false);
-        setNewBooking({ propertyId: 0, guestName: "", checkIn: "", checkOut: "", status: "upcoming", totalAmount: 0 });
+        setNewBooking({ propertyId: 0, guestName: "", checkIn: "", checkOut: "", status: "upcoming", totalAmount: 0, roomId: null, roomCount: null });
       },
     });
   };
@@ -130,7 +169,7 @@ export default function Bookings() {
                   <Label>Property</Label>
                   <Select
                     value={newBooking.propertyId ? String(newBooking.propertyId) : ""}
-                    onValueChange={(val) => setNewBooking(b => ({ ...b, propertyId: Number(val) }))}
+                    onValueChange={(val) => setNewBooking(b => ({ ...b, propertyId: Number(val), roomId: null, roomCount: null }))}
                   >
                     <SelectTrigger data-testid="select-property">
                       <SelectValue placeholder="Select a property" />
@@ -142,6 +181,44 @@ export default function Bookings() {
                     </SelectContent>
                   </Select>
                 </div>
+                {isRoomBased && propertyRooms && propertyRooms.length > 0 && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Room Type</Label>
+                      <Select
+                        value={newBooking.roomId ? String(newBooking.roomId) : ""}
+                        onValueChange={(val) => setNewBooking(b => ({ ...b, roomId: Number(val), roomCount: b.roomCount || 1 }))}
+                      >
+                        <SelectTrigger data-testid="select-room-type">
+                          <SelectValue placeholder="Select a room type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {propertyRooms.map(r => (
+                            <SelectItem key={r.id} value={String(r.id)}>
+                              {r.roomType} — ₹{r.nightlyRate.toLocaleString("en-IN")}/night ({r.roomCount} available)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Number of Rooms</Label>
+                      <Input
+                        data-testid="input-booking-room-count"
+                        type="number"
+                        min={1}
+                        max={selectedRoom?.roomCount || 1}
+                        value={newBooking.roomCount || 1}
+                        onChange={(e) => setNewBooking(b => ({ ...b, roomCount: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </>
+                )}
+                {isRoomBased && (!propertyRooms || propertyRooms.length === 0) && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600">
+                    No room types configured for this property. Add room types in the property detail page first.
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Check In</Label>
@@ -163,13 +240,14 @@ export default function Bookings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Total Amount (₹)</Label>
+                  <Label>Total Amount (₹){isRoomBased && selectedRoom ? " (auto-calculated)" : ""}</Label>
                   <Input
                     data-testid="input-total-amount"
                     type="number"
                     value={newBooking.totalAmount || ""}
                     onChange={(e) => setNewBooking(b => ({ ...b, totalAmount: Number(e.target.value) }))}
                     placeholder="e.g. 5000"
+                    readOnly={isRoomBased && !!selectedRoom}
                   />
                 </div>
                 <Button
@@ -224,6 +302,8 @@ export default function Bookings() {
               <TableRow className="hover:bg-transparent border-b-border">
                 <TableHead className="w-[200px]">Guest</TableHead>
                 <TableHead>Property</TableHead>
+                <TableHead>Room Type</TableHead>
+                <TableHead>Rooms</TableHead>
                 <TableHead>Check In</TableHead>
                 <TableHead>Check Out</TableHead>
                 <TableHead>Status</TableHead>
@@ -246,6 +326,17 @@ export default function Bookings() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {property?.name}
+                        {property?.bookingMode === "room_based" && (
+                          <Badge className="ml-2 bg-violet-500/15 text-violet-400 text-[9px] px-1.5 py-0 uppercase">Room</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {booking.roomId && roomsMap[booking.roomId]
+                          ? roomsMap[booking.roomId].roomType
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {booking.roomCount ? booking.roomCount : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{format(parseISO(booking.checkIn), "MMM d, yyyy")}</div>
@@ -266,7 +357,7 @@ export default function Bookings() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                     No reservations found matching your criteria.
                   </TableCell>
                 </TableRow>

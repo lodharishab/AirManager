@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import {
   insertPropertySchema,
+  insertRoomSchema,
   insertPropertyLinkSchema,
   insertBookingSchema,
   insertMessageSchema,
@@ -34,7 +35,8 @@ export async function registerRoutes(
     if (!property) return res.status(404).json({ message: "Property not found" });
     const links = await storage.getPropertyLinks(property.id);
     const bookings = (await storage.getBookings()).filter(b => b.propertyId === property.id);
-    res.json({ ...property, links, bookings });
+    const rooms = await storage.getRoomsByProperty(property.id);
+    res.json({ ...property, links, bookings, rooms });
   });
 
   app.post("/api/properties", async (req, res) => {
@@ -87,6 +89,48 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.get("/api/rooms", async (_req, res) => {
+    const allRooms = await storage.getAllRooms();
+    res.json(allRooms);
+  });
+
+  app.get("/api/properties/:id/rooms", async (req, res) => {
+    const propertyRooms = await storage.getRoomsByProperty(Number(req.params.id));
+    res.json(propertyRooms);
+  });
+
+  app.post("/api/properties/:id/rooms", async (req, res) => {
+    const data = { ...req.body, propertyId: Number(req.params.id) };
+    const parsed = insertRoomSchema.safeParse(data);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const room = await storage.createRoom(parsed.data);
+    res.status(201).json(room);
+  });
+
+  app.patch("/api/rooms/:id", async (req, res) => {
+    const { roomType, roomCount, nightlyRate } = req.body;
+    const updateData: Record<string, any> = {};
+    if (roomType !== undefined) updateData.roomType = String(roomType);
+    if (roomCount !== undefined) {
+      const count = Number(roomCount);
+      if (isNaN(count) || count < 1) return res.status(400).json({ message: "roomCount must be a positive integer" });
+      updateData.roomCount = count;
+    }
+    if (nightlyRate !== undefined) {
+      const rate = Number(nightlyRate);
+      if (isNaN(rate) || rate < 0) return res.status(400).json({ message: "nightlyRate must be non-negative" });
+      updateData.nightlyRate = rate;
+    }
+    const updated = await storage.updateRoom(Number(req.params.id), updateData);
+    if (!updated) return res.status(404).json({ message: "Room not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/rooms/:id", async (req, res) => {
+    await storage.deleteRoom(Number(req.params.id));
+    res.status(204).send();
+  });
+
   app.get("/api/bookings", async (_req, res) => {
     const allBookings = await storage.getBookings();
     res.json(allBookings);
@@ -101,6 +145,23 @@ export async function registerRoutes(
   app.post("/api/bookings", async (req, res) => {
     const parsed = insertBookingSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+
+    const property = await storage.getProperty(parsed.data.propertyId);
+    if (!property) return res.status(400).json({ message: "Property not found" });
+
+    if (property.bookingMode === "room_based") {
+      if (!parsed.data.roomId || !parsed.data.roomCount || parsed.data.roomCount < 1) {
+        return res.status(400).json({ message: "Room type and room count are required for room-based properties" });
+      }
+      const room = await storage.getRoom(parsed.data.roomId);
+      if (!room || room.propertyId !== property.id) {
+        return res.status(400).json({ message: "Invalid room type for this property" });
+      }
+    } else {
+      parsed.data.roomId = null;
+      parsed.data.roomCount = null;
+    }
+
     const booking = await storage.createBooking(parsed.data);
     res.status(201).json(booking);
   });

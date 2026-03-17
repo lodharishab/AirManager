@@ -3,6 +3,8 @@ import { pgTable, text, varchar, integer, date, timestamp, serial } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export type BookingMode = "whole" | "room_based";
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -30,6 +32,15 @@ export const properties = pgTable("properties", {
   minimumStay: integer("minimum_stay").default(1),
   houseRules: text("house_rules"),
   neighborhood: text("neighborhood"),
+  bookingMode: text("booking_mode").notNull().default("whole"),
+});
+
+export const rooms = pgTable("rooms", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(),
+  roomType: text("room_type").notNull(),
+  roomCount: integer("room_count").notNull(),
+  nightlyRate: integer("nightly_rate").notNull(),
 });
 
 export const propertyLinks = pgTable("property_links", {
@@ -48,6 +59,8 @@ export const bookings = pgTable("bookings", {
   checkOut: text("check_out").notNull(),
   status: text("status").notNull().default("upcoming"),
   totalAmount: integer("total_amount").notNull(),
+  roomId: integer("room_id"),
+  roomCount: integer("room_count"),
 });
 
 export const messages = pgTable("messages", {
@@ -104,6 +117,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true });
+export const insertRoomSchema = createInsertSchema(rooms).omit({ id: true });
 export const insertPropertyLinkSchema = createInsertSchema(propertyLinks).omit({ id: true });
 export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true });
@@ -116,6 +130,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Property = typeof properties.$inferSelect;
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
+export type Room = typeof rooms.$inferSelect;
+export type InsertRoom = z.infer<typeof insertRoomSchema>;
 export type PropertyLink = typeof propertyLinks.$inferSelect;
 export type InsertPropertyLink = z.infer<typeof insertPropertyLinkSchema>;
 export type Booking = typeof bookings.$inferSelect;

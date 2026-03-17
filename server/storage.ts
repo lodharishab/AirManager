@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, enquiries,
+  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, enquiries, rooms,
   type User, type InsertUser,
   type Property, type InsertProperty,
+  type Room, type InsertRoom,
   type PropertyLink, type InsertPropertyLink,
   type Booking, type InsertBooking,
   type Message, type InsertMessage,
@@ -23,6 +24,13 @@ export interface IStorage {
   createProperty(property: InsertProperty): Promise<Property>;
   updateProperty(id: number, property: Partial<InsertProperty>): Promise<Property | undefined>;
   deleteProperty(id: number): Promise<void>;
+
+  getAllRooms(): Promise<Room[]>;
+  getRoomsByProperty(propertyId: number): Promise<Room[]>;
+  getRoom(id: number): Promise<Room | undefined>;
+  createRoom(room: InsertRoom): Promise<Room>;
+  updateRoom(id: number, data: Partial<InsertRoom>): Promise<Room | undefined>;
+  deleteRoom(id: number): Promise<void>;
 
   getPropertyLinks(propertyId: number): Promise<PropertyLink[]>;
   createPropertyLink(link: InsertPropertyLink): Promise<PropertyLink>;
@@ -95,8 +103,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProperty(id: number): Promise<void> {
+    await db.delete(rooms).where(eq(rooms.propertyId, id));
     await db.delete(propertyLinks).where(eq(propertyLinks.propertyId, id));
+    await db.delete(bookings).where(eq(bookings.propertyId, id));
     await db.delete(properties).where(eq(properties.id, id));
+  }
+
+  async getAllRooms(): Promise<Room[]> {
+    return db.select().from(rooms);
+  }
+
+  async getRoomsByProperty(propertyId: number): Promise<Room[]> {
+    return db.select().from(rooms).where(eq(rooms.propertyId, propertyId));
+  }
+
+  async getRoom(id: number): Promise<Room | undefined> {
+    const [room] = await db.select().from(rooms).where(eq(rooms.id, id));
+    return room;
+  }
+
+  async createRoom(room: InsertRoom): Promise<Room> {
+    const [created] = await db.insert(rooms).values(room).returning();
+    return created;
+  }
+
+  async updateRoom(id: number, data: Partial<InsertRoom>): Promise<Room | undefined> {
+    const [updated] = await db.update(rooms).set(data).where(eq(rooms.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRoom(id: number): Promise<void> {
+    await db.delete(rooms).where(eq(rooms.id, id));
   }
 
   async getPropertyLinks(propertyId: number): Promise<PropertyLink[]> {

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Search, Plus, MoreHorizontal, Home, Loader2, Bed, Bath, Users } from "lucide-react";
+import { MapPin, Search, Plus, MoreHorizontal, Home, Loader2, Bed, Bath, Users, DoorOpen } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Properties() {
@@ -38,6 +45,7 @@ export default function Properties() {
     occupancyRate: 0,
     monthlyRevenue: 0,
     imageUrl: "/property-1.jpg",
+    bookingMode: "whole" as "whole" | "room_based",
   });
 
   const filteredProperties = (properties || []).filter(property => 
@@ -50,11 +58,18 @@ export default function Properties() {
       toast({ title: "Please fill in property name and address", variant: "destructive" });
       return;
     }
-    createProperty.mutate(newProperty, {
+    if (newProperty.bookingMode === "whole" && !newProperty.nightlyRate) {
+      toast({ title: "Please set the nightly rate", variant: "destructive" });
+      return;
+    }
+    const payload = newProperty.bookingMode === "room_based"
+      ? { ...newProperty, nightlyRate: 0 }
+      : newProperty;
+    createProperty.mutate(payload, {
       onSuccess: () => {
         toast({ title: "Property created successfully" });
         setDialogOpen(false);
-        setNewProperty({ name: "", address: "", nightlyRate: 0, status: "active", occupancyRate: 0, monthlyRevenue: 0, imageUrl: "/property-1.jpg" });
+        setNewProperty({ name: "", address: "", nightlyRate: 0, status: "active", occupancyRate: 0, monthlyRevenue: 0, imageUrl: "/property-1.jpg", bookingMode: "whole" });
       },
     });
   };
@@ -124,15 +139,37 @@ export default function Properties() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Nightly Rate (₹)</Label>
-                  <Input
-                    data-testid="input-property-rate"
-                    type="number"
-                    value={newProperty.nightlyRate || ""}
-                    onChange={(e) => setNewProperty(p => ({ ...p, nightlyRate: Number(e.target.value) }))}
-                    placeholder="e.g. 500"
-                  />
+                  <Label>Booking Mode</Label>
+                  <Select
+                    value={newProperty.bookingMode}
+                    onValueChange={(val) => setNewProperty(p => ({ ...p, bookingMode: val as "whole" | "room_based" }))}
+                  >
+                    <SelectTrigger data-testid="select-booking-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="whole">Whole Property</SelectItem>
+                      <SelectItem value="room_based">Room Based</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {newProperty.bookingMode === "room_based"
+                      ? "Guests book individual room types. Set rates per room type after creating the property."
+                      : "Guests book the entire property at a single nightly rate."}
+                  </p>
                 </div>
+                {newProperty.bookingMode === "whole" && (
+                  <div className="space-y-2">
+                    <Label>Nightly Rate (₹)</Label>
+                    <Input
+                      data-testid="input-property-rate"
+                      type="number"
+                      value={newProperty.nightlyRate || ""}
+                      onChange={(e) => setNewProperty(p => ({ ...p, nightlyRate: Number(e.target.value) }))}
+                      placeholder="e.g. 500"
+                    />
+                  </div>
+                )}
                 <Button
                   data-testid="button-submit-property"
                   className="w-full text-primary-foreground"
@@ -167,13 +204,18 @@ export default function Properties() {
                     {property.status}
                   </Badge>
                 </div>
-                {property.propertyType && (
-                  <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4 flex gap-2">
+                  {property.propertyType && (
                     <Badge className="bg-background/90 text-foreground hover:bg-background px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
                       {property.propertyType}
                     </Badge>
-                  </div>
-                )}
+                  )}
+                  {property.bookingMode === "room_based" && (
+                    <Badge data-testid={`badge-room-based-${property.id}`} className="bg-violet-500/90 text-white hover:bg-violet-500 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <DoorOpen className="h-3 w-3" /> Room Based
+                    </Badge>
+                  )}
+                </div>
               </div>
             </Link>
             
@@ -222,8 +264,12 @@ export default function Properties() {
 
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Nightly Rate</p>
-                  <p className="font-semibold text-lg mt-1">₹{property.nightlyRate.toLocaleString("en-IN")}</p>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                    {property.bookingMode === "room_based" ? "Booking" : "Nightly Rate"}
+                  </p>
+                  <p className="font-semibold text-lg mt-1">
+                    {property.bookingMode === "room_based" ? "Per Room" : `₹${property.nightlyRate.toLocaleString("en-IN")}`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Occupancy</p>
