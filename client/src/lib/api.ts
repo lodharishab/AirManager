@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage, Enquiry, Room } from "@shared/schema";
+import type { Property, PropertyLink, Booking, Conversation, Message, RevenueData, GalleryImage, Enquiry, Room, Review } from "@shared/schema";
 
 export function useProperties() {
   return useQuery<Property[]>({
@@ -309,6 +309,57 @@ export function useDeleteEnquiry() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enquiries"] });
+    },
+  });
+}
+
+export function useReviews() {
+  return useQuery<Review[]>({
+    queryKey: ["/api/reviews"],
+  });
+}
+
+export function useReviewsByProperty(propertyId: number | undefined) {
+  return useQuery<Review[]>({
+    queryKey: ["/api/reviews/property", propertyId],
+    enabled: !!propertyId,
+  });
+}
+
+export function useCreateReview() {
+  return useMutation({
+    mutationFn: async (data: Omit<Review, "id">) => {
+      const res = await apiRequest("POST", "/api/reviews", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/property"] });
+    },
+  });
+}
+
+export function useUpdateReview() {
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<Review> & { id: number }) => {
+      const res = await apiRequest("PATCH", `/api/reviews/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/property"] });
+    },
+  });
+}
+
+export function useDeleteReview() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/reviews/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/property"] });
     },
   });
 }

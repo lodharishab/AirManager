@@ -14,6 +14,7 @@ import Bookings from "./pages/bookings";
 import Messages from "./pages/messages";
 import Gallery from "./pages/gallery";
 import Enquiries from "./pages/enquiries";
+import Reviews from "./pages/reviews";
 import Settings from "./pages/settings";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/bookings" component={Bookings}/>
         <Route path="/messages" component={Messages}/>
         <Route path="/enquiries" component={Enquiries}/>
+        <Route path="/reviews" component={Reviews}/>
         <Route path="/gallery" component={Gallery}/>
         <Route path="/settings" component={Settings}/>
         <Route component={NotFound} />

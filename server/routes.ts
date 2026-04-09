@@ -12,6 +12,7 @@ import {
   insertConversationSchema,
   insertGalleryImageSchema,
   insertEnquirySchema,
+  insertReviewSchema,
 } from "@shared/schema";
 import { importFromGoogleDrive, extractFolderId } from "./google-drive";
 
@@ -404,6 +405,23 @@ export async function registerRoutes(
       await storage.createEnquiry(e);
     }
 
+    const seedReviews = [
+      { propertyId: createdProperties[0].id, guestName: "Sarah Jenkins", platform: "airbnb", rating: 5, reviewText: "Absolutely stunning haveli! The hand-painted frescoes and marble courtyard transported us back in time. Modern amenities blended seamlessly with heritage charm. The host was incredibly attentive and arranged a private heritage tour for us.", responseText: "Thank you so much, Sarah! We're thrilled you enjoyed the heritage experience. Looking forward to hosting you again!", reviewDate: new Date(now.getTime() - 5 * 86400000).toISOString() },
+      { propertyId: createdProperties[0].id, guestName: "Rajesh Mehta", platform: "google", rating: 4, reviewText: "Beautiful property with authentic Rajasthani character. The pool area is lovely. Only minor issue was some noise from the street in the morning, but overall a wonderful stay.", responseText: "Thank you for the feedback, Rajesh! We're working on additional soundproofing for the street-facing rooms.", reviewDate: new Date(now.getTime() - 15 * 86400000).toISOString() },
+      { propertyId: createdProperties[1].id, guestName: "Michael Chen", platform: "booking", rating: 5, reviewText: "Perfect city apartment! Super modern, clean, and well-located. The panoramic views from the living room were incredible. Walking distance to everything we needed.", reviewDate: new Date(now.getTime() - 8 * 86400000).toISOString() },
+      { propertyId: createdProperties[1].id, guestName: "Priya Sharma", platform: "airbnb", rating: 4, reviewText: "Great apartment for a business trip. Fast WiFi, comfortable workspace, and the gym was a bonus. Would have loved a coffee machine but otherwise excellent.", responseText: "Thanks Priya! Great suggestion — we've now added a Nespresso machine for future guests.", reviewDate: new Date(now.getTime() - 20 * 86400000).toISOString() },
+      { propertyId: createdProperties[2].id, guestName: "David Thompson", platform: "direct", rating: 5, reviewText: "The most luxurious stay we've ever had in India. The views of Jal Mahal at sunset from our private terrace were unforgettable. Butler service was impeccable. Worth every rupee!", responseText: "What a wonderful review, David! We're so glad you and your partner enjoyed the anniversary celebration. The sunset views are truly magical.", reviewDate: new Date(now.getTime() - 3 * 86400000).toISOString() },
+      { propertyId: createdProperties[2].id, guestName: "Ananya Desai", platform: "google", rating: 4, reviewText: "Extraordinary property with top-notch service. The lake views are breathtaking. Only giving 4 stars because the spa was closed for maintenance during our visit, but everything else was perfect.", reviewDate: new Date(now.getTime() - 25 * 86400000).toISOString() },
+      { propertyId: createdProperties[3].id, guestName: "Emily Davis", platform: "airbnb", rating: 5, reviewText: "Such a charming little studio! Beautifully decorated with authentic Rajasthani textiles. Perfect for solo travellers. The location near Johari Bazaar is unbeatable for shopping and street food.", responseText: "Thank you Emily! So glad you loved the Rajasthani touches. Hope you found some great gems at Johari Bazaar!", reviewDate: new Date(now.getTime() - 12 * 86400000).toISOString() },
+      { propertyId: createdProperties[3].id, guestName: "Tom Wilson", platform: "booking", rating: 3, reviewText: "Decent studio in a great location. A bit small for two people with luggage. The AC worked well but the hot water took a while. Good value for money though.", responseText: "Thank you for your honest feedback, Tom. We've upgraded the water heater to ensure instant hot water. We appreciate your suggestions!", reviewDate: new Date(now.getTime() - 30 * 86400000).toISOString() },
+      { propertyId: createdProperties[0].id, guestName: "Lisa Anderson", platform: "booking", rating: 5, reviewText: "A truly magical heritage stay. The courtyard dining experience was the highlight — eating under the stars surrounded by 200-year-old architecture. The staff went above and beyond.", reviewDate: new Date(now.getTime() - 40 * 86400000).toISOString() },
+      { propertyId: createdProperties[2].id, guestName: "James Wilson", platform: "airbnb", rating: 5, reviewText: "If you want to feel like royalty in Jaipur, this is the place. The palace suite is enormous and beautifully furnished. The lake view is something out of a movie. Absolutely flawless experience.", responseText: "Thank you James! We strive to deliver a royal experience and your words mean the world to us.", reviewDate: new Date(now.getTime() - 18 * 86400000).toISOString() },
+    ];
+
+    for (const r of seedReviews) {
+      await storage.createReview(r);
+    }
+
     res.json({ message: "Seed data created successfully" });
   });
 
@@ -662,6 +680,86 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid enquiry ID" });
     await storage.deleteEnquiry(id);
+    res.status(204).send();
+  });
+
+  app.get("/api/reviews", async (_req, res) => {
+    const allReviews = await storage.getReviews();
+    res.json(allReviews);
+  });
+
+  app.get("/api/reviews/property/:propertyId", async (req, res) => {
+    const propertyReviews = await storage.getReviewsByProperty(Number(req.params.propertyId));
+    res.json(propertyReviews);
+  });
+
+  app.get("/api/reviews/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid review ID" });
+    const review = await storage.getReview(id);
+    if (!review) return res.status(404).json({ message: "Review not found" });
+    res.json(review);
+  });
+
+  app.post("/api/reviews", async (req, res) => {
+    const data = { ...req.body };
+    const validPlatforms = ["airbnb", "booking", "google", "direct", "other"];
+    if (data.platform && !validPlatforms.includes(data.platform)) {
+      return res.status(400).json({ message: "Invalid platform. Must be one of: airbnb, booking, google, direct, other" });
+    }
+    if (data.rating !== undefined) {
+      const rating = Number(data.rating);
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be an integer between 1 and 5" });
+      }
+    }
+    const propertyId = Number(data.propertyId);
+    if (!propertyId || isNaN(propertyId) || propertyId <= 0) {
+      return res.status(400).json({ message: "Valid propertyId is required" });
+    }
+    const property = await storage.getProperty(propertyId);
+    if (!property) return res.status(400).json({ message: "Property not found" });
+    const parsed = insertReviewSchema.safeParse(data);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const review = await storage.createReview(parsed.data);
+    res.status(201).json(review);
+  });
+
+  app.patch("/api/reviews/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid review ID" });
+    const validPlatforms = ["airbnb", "booking", "google", "direct", "other"];
+    if (req.body.platform && !validPlatforms.includes(req.body.platform)) {
+      return res.status(400).json({ message: "Invalid platform" });
+    }
+    if (req.body.rating !== undefined) {
+      const rating = Number(req.body.rating);
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+    }
+    if (req.body.propertyId !== undefined) {
+      const propertyId = Number(req.body.propertyId);
+      if (!propertyId || isNaN(propertyId) || propertyId <= 0) {
+        return res.status(400).json({ message: "Valid propertyId is required" });
+      }
+      const property = await storage.getProperty(propertyId);
+      if (!property) return res.status(400).json({ message: "Property not found" });
+    }
+    const allowedFields = ["propertyId", "guestName", "platform", "rating", "reviewText", "responseText", "reviewDate"];
+    const updateData: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) updateData[key] = req.body[key];
+    }
+    const updated = await storage.updateReview(id, updateData);
+    if (!updated) return res.status(404).json({ message: "Review not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/reviews/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid review ID" });
+    await storage.deleteReview(id);
     res.status(204).send();
   });
 

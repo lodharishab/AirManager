@@ -126,6 +126,19 @@ export const insertRevenueDataSchema = createInsertSchema(revenueData).omit({ id
 export const insertGalleryImageSchema = createInsertSchema(galleryImages).omit({ id: true });
 export const insertEnquirySchema = createInsertSchema(enquiries).omit({ id: true });
 
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(),
+  guestName: text("guest_name").notNull(),
+  platform: text("platform").notNull().default("direct"),
+  rating: integer("rating").notNull(),
+  reviewText: text("review_text"),
+  responseText: text("response_text"),
+  reviewDate: text("review_date").notNull(),
+});
+
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true });
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Property = typeof properties.$inferSelect;
@@ -146,5 +159,7 @@ export type GalleryImage = typeof galleryImages.$inferSelect;
 export type InsertGalleryImage = z.infer<typeof insertGalleryImageSchema>;
 export type Enquiry = typeof enquiries.$inferSelect;
 export type InsertEnquiry = z.infer<typeof insertEnquirySchema>;
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;
 
 export * from "./models/chat";

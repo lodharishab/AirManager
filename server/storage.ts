@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, enquiries, rooms,
+  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, enquiries, rooms, reviews,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
@@ -12,6 +12,7 @@ import {
   type RevenueData, type InsertRevenueData,
   type GalleryImage, type InsertGalleryImage,
   type Enquiry, type InsertEnquiry,
+  type Review, type InsertReview,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -65,6 +66,13 @@ export interface IStorage {
   createEnquiry(enquiry: InsertEnquiry): Promise<Enquiry>;
   updateEnquiry(id: number, data: Partial<InsertEnquiry>): Promise<Enquiry | undefined>;
   deleteEnquiry(id: number): Promise<void>;
+
+  getReviews(): Promise<Review[]>;
+  getReviewsByProperty(propertyId: number): Promise<Review[]>;
+  getReview(id: number): Promise<Review | undefined>;
+  createReview(review: InsertReview): Promise<Review>;
+  updateReview(id: number, data: Partial<InsertReview>): Promise<Review | undefined>;
+  deleteReview(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -257,6 +265,33 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEnquiry(id: number): Promise<void> {
     await db.delete(enquiries).where(eq(enquiries.id, id));
+  }
+
+  async getReviews(): Promise<Review[]> {
+    return db.select().from(reviews);
+  }
+
+  async getReviewsByProperty(propertyId: number): Promise<Review[]> {
+    return db.select().from(reviews).where(eq(reviews.propertyId, propertyId));
+  }
+
+  async getReview(id: number): Promise<Review | undefined> {
+    const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
+    return review;
+  }
+
+  async createReview(review: InsertReview): Promise<Review> {
+    const [created] = await db.insert(reviews).values(review).returning();
+    return created;
+  }
+
+  async updateReview(id: number, data: Partial<InsertReview>): Promise<Review | undefined> {
+    const [updated] = await db.update(reviews).set(data).where(eq(reviews.id, id)).returning();
+    return updated;
+  }
+
+  async deleteReview(id: number): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, id));
   }
 }
 
