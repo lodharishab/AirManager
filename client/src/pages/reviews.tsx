@@ -485,7 +485,7 @@ export default function Reviews() {
                     <div className="flex items-center gap-3 mb-3">
                       <StarRating rating={review.rating} />
                       <span className="text-xs text-muted-foreground">
-                        {new Date(review.reviewDate).toLocaleDateString("en-IN", {
+                        {new Date(review.reviewDate).toLocaleDateString("en-US", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",

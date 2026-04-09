@@ -1,7 +1,7 @@
-# HostSpace - Luxury Rental Property Management Dashboard
+# AirManager - Short-Term Rental Property Management Dashboard
 
 ## Overview
-A luxury black and gold dark-themed Airbnb rental property management dashboard for a Jaipur, India-based business. Tracks properties, bookings, guests, and revenue with INR (₹) currency.
+A generic, luxury dark-themed short-term rental property management dashboard. Tracks properties, bookings, guests, and revenue with USD ($) currency. No location or region assumptions — works for any city worldwide.
 
 ## Architecture
 - **Frontend**: React + Vite + TanStack Query + Tailwind CSS + shadcn/ui + Recharts
@@ -13,8 +13,8 @@ A luxury black and gold dark-themed Airbnb rental property management dashboard 
 - **Theme**: Luxury dark theme ONLY — `class="dark"` hardcoded on `<html>` tag
 - **Colors**: Primary gold `hsl(43, 60%, 55%)`, near-black background `hsl(0, 0%, 5%)`
 - **Typography**: Cormorant Garamond (serif headings) + Montserrat (sans body)
-- **Currency**: INR (₹) throughout — never use $
-- **Location**: Jaipur, India context for all properties
+- **Currency**: USD ($) throughout
+- **Location**: Generic/international — no city-specific hardcoding
 
 ## Data Model (shared/schema.ts)
 - `properties` — rental listings with full details: name, address, nightly rate, status, occupancy, revenue, description, propertyType, bedrooms, bathrooms, maxGuests, squareFeet, amenities (array), checkInTime, checkOutTime, minimumStay, houseRules, neighborhood
@@ -40,7 +40,6 @@ All prefixed with `/api`:
 - `POST /api/messages` — send a message
 - `GET /api/revenue` — monthly revenue chart data
 - `GET /api/dashboard/stats` — aggregated dashboard KPIs
-- `POST /api/seed` — auto-seeds initial data if DB is empty
 - `GET/POST /api/gallery` — list/create gallery images
 - `PATCH/DELETE /api/gallery/:id` — update/delete gallery image
 - `GET /api/gallery/property/:propertyId` — images by property
@@ -52,13 +51,14 @@ All prefixed with `/api`:
 - `POST /api/ai-chat/conversations/:id/messages` — send message, get streaming AI response
 
 ## Frontend Pages
-- `/` — Dashboard (KPI cards, revenue chart, recent bookings)
+- `/` — Dashboard (KPI cards, revenue chart, recent bookings; shows welcome empty state when no properties exist)
 - `/properties` — Property grid with create/delete, clickable cards linking to detail
 - `/properties/:id` — Property detail page (full info, amenities, house rules, bookings, links management)
 - `/bookings` — Bookings table with filters and create dialog
 - `/messages` — Chat UI with conversations and messaging
 - `/gallery` — Photo gallery with search, tag/star/property filters, add/edit/delete, Google Drive import
 - `/enquiries` — Enquiry management with table view, status tracking, search/filter, add/delete
+- `/reviews` — Guest reviews with ratings, platform badges, filters
 - `/settings` — Account, notifications, billing, security tabs
 
 ## Key Files
@@ -79,7 +79,7 @@ All prefixed with `/api`:
 ## AI Chatbot
 - Floating button (bottom-right) opens a chat panel
 - Uses OpenAI via Replit AI Integrations (gpt-5-mini model)
-- System prompt: HostSpace AI property management assistant for Jaipur
+- System prompt: AirManager AI — generic property management assistant, USD currency
 - Streaming responses via SSE
 - Conversation persistence in `ai_conversations`/`ai_messages` tables
 - API prefix: `/api/ai-chat/` (separate from guest messaging at `/api/conversations`)
@@ -92,9 +92,5 @@ All prefixed with `/api`:
 - Shows current vs. new values with NEW/UPDATE badges
 - API: `POST /api/properties/:id/ai-enrich` (streaming SSE)
 
-## Auto-Seeding
-The dashboard page auto-triggers `POST /api/seed` when no properties exist, populating:
-- 4 properties in Jaipur neighborhoods
-- 5 bookings with varied statuses
-- 3 guest conversations with sample messages
-- 6 months of revenue data
+## Empty State
+The dashboard shows a welcome card ("Get started by adding your first property") when no properties exist. There is no auto-seeding — the app starts clean. Demo data is on a separate demo branch.

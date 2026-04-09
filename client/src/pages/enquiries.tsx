@@ -165,7 +165,7 @@ export default function Enquiries() {
                   data-testid="input-enquiry-guest-name"
                   value={newEnquiry.guestName}
                   onChange={(e) => setNewEnquiry((prev) => ({ ...prev, guestName: e.target.value }))}
-                  placeholder="e.g. Rahul Sharma"
+                  placeholder="e.g. Jane Smith"
                 />
               </div>
               <div className="space-y-2">
@@ -204,7 +204,7 @@ export default function Enquiries() {
                     type="tel"
                     value={newEnquiry.guestPhone}
                     onChange={(e) => setNewEnquiry((prev) => ({ ...prev, guestPhone: e.target.value }))}
-                    placeholder="+91 98765 43210"
+                    placeholder="+1 555 000 0000"
                   />
                 </div>
               </div>

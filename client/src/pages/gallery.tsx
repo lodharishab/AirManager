@@ -580,7 +580,7 @@ export default function Gallery() {
                 <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border/30">
                   <span>Source: {selectedImage.source === "google_drive" ? "Google Drive" : "Manual"}</span>
                   <span>•</span>
-                  <span>Added: {new Date(selectedImage.createdAt).toLocaleDateString("en-IN")}</span>
+                  <span>Added: {new Date(selectedImage.createdAt).toLocaleDateString("en-US")}</span>
                 </div>
               </div>
             </div>

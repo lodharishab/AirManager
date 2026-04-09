@@ -230,200 +230,7 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/seed", async (_req, res) => {
-    const existingProperties = await storage.getProperties();
-    if (existingProperties.length > 0) {
-      return res.json({ message: "Data already seeded" });
-    }
-
-    const seedProperties = [
-      {
-        name: "Royal Heritage Haveli",
-        address: "Nahargarh Road, Jaipur, RJ",
-        nightlyRate: 8500,
-        imageUrl: "/property-1.jpg",
-        status: "active",
-        occupancyRate: 85,
-        monthlyRevenue: 216750,
-        description: "A stunning heritage haveli restored to its former glory with modern amenities. Features traditional Rajasthani architecture, hand-painted frescoes, and a private courtyard with a marble fountain. Perfect for guests seeking an authentic royal Jaipur experience.",
-        propertyType: "haveli",
-        bedrooms: 4,
-        bathrooms: 3,
-        maxGuests: 8,
-        squareFeet: 3200,
-        amenities: ["WiFi", "AC", "Pool", "Courtyard", "Room Service", "Parking", "Kitchen", "Washing Machine", "TV", "Heritage Tour"],
-        checkInTime: "14:00",
-        checkOutTime: "11:00",
-        minimumStay: 2,
-        houseRules: "No smoking indoors. No pets. Quiet hours after 10 PM. Please respect the heritage artefacts.",
-        neighborhood: "Amer",
-      },
-      {
-        name: "Pink City Luxury Apartment",
-        address: "Malviya Nagar, Jaipur, RJ",
-        nightlyRate: 4500,
-        imageUrl: "/property-2.jpg",
-        status: "active",
-        occupancyRate: 72,
-        monthlyRevenue: 97200,
-        description: "A sleek, fully-furnished luxury apartment in the heart of Malviya Nagar. Modern interiors with floor-to-ceiling windows offering panoramic city views. Walking distance to top restaurants, shopping, and the metro station.",
-        propertyType: "apartment",
-        bedrooms: 2,
-        bathrooms: 2,
-        maxGuests: 4,
-        squareFeet: 1400,
-        amenities: ["WiFi", "AC", "Gym", "Elevator", "Parking", "Kitchen", "Washing Machine", "TV", "Balcony", "Security"],
-        checkInTime: "15:00",
-        checkOutTime: "11:00",
-        minimumStay: 1,
-        houseRules: "No parties or events. No smoking. Pets allowed on request. Please keep noise to a minimum.",
-        neighborhood: "Malviya Nagar",
-      },
-      {
-        name: "Lakeside Palace Suite",
-        address: "Man Sagar Lake Road, Jaipur, RJ",
-        nightlyRate: 15000,
-        imageUrl: "/property-3.jpg",
-        status: "active",
-        occupancyRate: 60,
-        monthlyRevenue: 270000,
-        description: "An opulent palace suite with breathtaking views of Man Sagar Lake and Jal Mahal. This exclusive property offers unparalleled luxury with a private terrace, antique furnishings, and personalised butler service.",
-        propertyType: "villa",
-        bedrooms: 5,
-        bathrooms: 4,
-        maxGuests: 10,
-        squareFeet: 5500,
-        amenities: ["WiFi", "AC", "Pool", "Spa", "Butler Service", "Parking", "Kitchen", "Laundry", "TV", "Lake View", "Private Terrace", "Garden"],
-        checkInTime: "14:00",
-        checkOutTime: "12:00",
-        minimumStay: 3,
-        houseRules: "No smoking indoors. No outside catering without prior approval. Children must be supervised near the pool.",
-        neighborhood: "Amer",
-      },
-      {
-        name: "Johari Bazaar Studio",
-        address: "C-Scheme, Jaipur, RJ",
-        nightlyRate: 2800,
-        imageUrl: "/property-4.jpg",
-        status: "active",
-        occupancyRate: 92,
-        monthlyRevenue: 77280,
-        description: "A charming studio in the vibrant C-Scheme area, steps away from Johari Bazaar. Beautifully designed with Rajasthani textiles and art. Ideal for solo travellers and couples looking for an affordable yet stylish base in the Pink City.",
-        propertyType: "studio",
-        bedrooms: 1,
-        bathrooms: 1,
-        maxGuests: 2,
-        squareFeet: 650,
-        amenities: ["WiFi", "AC", "Kitchen", "TV", "Washing Machine", "Iron", "Hair Dryer", "Workspace"],
-        checkInTime: "13:00",
-        checkOutTime: "11:00",
-        minimumStay: 1,
-        houseRules: "No smoking. No pets. No parties. Please remove shoes at the entrance.",
-        neighborhood: "C-Scheme",
-      },
-    ];
-
-    const createdProperties = [];
-    for (const p of seedProperties) {
-      createdProperties.push(await storage.createProperty(p));
-    }
-
-    const seedLinks = [
-      { propertyId: createdProperties[0].id, label: "Airbnb Listing", url: "https://airbnb.com/rooms/example-haveli", linkType: "airbnb" },
-      { propertyId: createdProperties[0].id, label: "Google Maps", url: "https://maps.google.com/?q=Nahargarh+Road+Jaipur", linkType: "maps" },
-      { propertyId: createdProperties[0].id, label: "Booking.com", url: "https://booking.com/hotel/example-haveli", linkType: "booking" },
-      { propertyId: createdProperties[0].id, label: "Photo Gallery", url: "https://photos.google.com/share/example", linkType: "photos" },
-      { propertyId: createdProperties[1].id, label: "Airbnb Listing", url: "https://airbnb.com/rooms/example-apartment", linkType: "airbnb" },
-      { propertyId: createdProperties[1].id, label: "Google Maps", url: "https://maps.google.com/?q=Malviya+Nagar+Jaipur", linkType: "maps" },
-      { propertyId: createdProperties[1].id, label: "MakeMyTrip", url: "https://makemytrip.com/hotels/example", linkType: "ota" },
-      { propertyId: createdProperties[2].id, label: "Airbnb Listing", url: "https://airbnb.com/rooms/example-palace", linkType: "airbnb" },
-      { propertyId: createdProperties[2].id, label: "Google Maps", url: "https://maps.google.com/?q=Man+Sagar+Lake+Jaipur", linkType: "maps" },
-      { propertyId: createdProperties[2].id, label: "Luxury Retreats", url: "https://luxuryretreats.com/example-palace", linkType: "ota" },
-      { propertyId: createdProperties[2].id, label: "Virtual Tour", url: "https://my.matterport.com/show/example", linkType: "tour" },
-      { propertyId: createdProperties[3].id, label: "Airbnb Listing", url: "https://airbnb.com/rooms/example-studio", linkType: "airbnb" },
-      { propertyId: createdProperties[3].id, label: "Google Maps", url: "https://maps.google.com/?q=C-Scheme+Jaipur", linkType: "maps" },
-    ];
-
-    for (const l of seedLinks) {
-      await storage.createPropertyLink(l);
-    }
-
-    const now = new Date();
-    const seedBookings = [
-      { propertyId: createdProperties[0].id, guestName: "Sarah Jenkins", checkIn: new Date(now.getTime() - 2 * 86400000).toISOString(), checkOut: new Date(now.getTime() + 3 * 86400000).toISOString(), status: "current", totalAmount: 42500 },
-      { propertyId: createdProperties[1].id, guestName: "Michael Chen", checkIn: new Date(now.getTime() + 5 * 86400000).toISOString(), checkOut: new Date(now.getTime() + 10 * 86400000).toISOString(), status: "upcoming", totalAmount: 22500 },
-      { propertyId: createdProperties[3].id, guestName: "Emily Davis", checkIn: new Date(now.getTime() - 10 * 86400000).toISOString(), checkOut: new Date(now.getTime() - 5 * 86400000).toISOString(), status: "completed", totalAmount: 14000 },
-      { propertyId: createdProperties[0].id, guestName: "James Wilson", checkIn: new Date(now.getTime() + 12 * 86400000).toISOString(), checkOut: new Date(now.getTime() + 15 * 86400000).toISOString(), status: "upcoming", totalAmount: 25500 },
-      { propertyId: createdProperties[2].id, guestName: "Robert Taylor", checkIn: new Date(now.getTime() + 20 * 86400000).toISOString(), checkOut: new Date(now.getTime() + 27 * 86400000).toISOString(), status: "upcoming", totalAmount: 105000 },
-    ];
-
-    for (const b of seedBookings) {
-      await storage.createBooking(b);
-    }
-
-    const seedConversations = [
-      { guestName: "Sarah Jenkins", propertyName: "Royal Heritage Haveli", lastMessage: "What time is check-in?", lastMessageTime: "10:30 AM", unreadCount: 2, avatarUrl: "https://i.pravatar.cc/150?u=sarah" },
-      { guestName: "Michael Chen", propertyName: "Pink City Luxury Apartment", lastMessage: "Thanks for the great stay!", lastMessageTime: "Yesterday", unreadCount: 0, avatarUrl: "https://i.pravatar.cc/150?u=michael" },
-      { guestName: "Emily Davis", propertyName: "Johari Bazaar Studio", lastMessage: "Is parking available?", lastMessageTime: "Mon", unreadCount: 0, avatarUrl: "https://i.pravatar.cc/150?u=emily" },
-    ];
-
-    const createdConversations = [];
-    for (const c of seedConversations) {
-      createdConversations.push(await storage.createConversation(c));
-    }
-
-    const seedMessages = [
-      { conversationId: createdConversations[0].id, senderName: "Sarah Jenkins", senderType: "guest", content: "Hi! We're really looking forward to our stay. Could you tell me what time check-in is?", sentAt: "10:28 AM" },
-      { conversationId: createdConversations[0].id, senderName: "Host", senderType: "host", content: "Hello! We're excited to host you. Check-in is anytime after 2:00 PM. I'll send you the smart lock code on the morning of your arrival.", sentAt: "10:30 AM" },
-    ];
-
-    for (const m of seedMessages) {
-      await storage.createMessage(m);
-    }
-
-    const seedRevenue = [
-      { month: "Jan", revenue: 485000 },
-      { month: "Feb", revenue: 520000 },
-      { month: "Mar", revenue: 498000 },
-      { month: "Apr", revenue: 612000 },
-      { month: "May", revenue: 589000 },
-      { month: "Jun", revenue: 661230 },
-    ];
-
-    for (const r of seedRevenue) {
-      await storage.createRevenueData(r);
-    }
-
-    const seedEnquiries = [
-      { propertyId: createdProperties[0].id, guestName: "Amit Patel", guestEmail: "amit.patel@email.com", guestPhone: "+91 98765 43210", message: "We are a family of 6 looking to stay for a week in December. Is the haveli available during Christmas week? Also, do you offer any special rates for longer stays?", status: "new", createdAt: new Date(now.getTime() - 1 * 86400000).toISOString() },
-      { propertyId: createdProperties[1].id, guestName: "Priya Sharma", guestEmail: "priya.s@email.com", guestPhone: "+91 91234 56789", message: "Hi, I'm interested in booking the apartment for a corporate retreat. Can we arrange for 3 apartments for 4 nights in January?", status: "responded", createdAt: new Date(now.getTime() - 3 * 86400000).toISOString() },
-      { propertyId: createdProperties[2].id, guestName: "David Thompson", guestEmail: "david.t@email.com", guestPhone: "+44 7700 900123", message: "We are celebrating our anniversary and would love to book the palace suite. Is there a honeymoon or anniversary package available?", status: "converted", createdAt: new Date(now.getTime() - 7 * 86400000).toISOString() },
-      { propertyId: createdProperties[3].id, guestName: "Meera Gupta", guestEmail: "meera.g@email.com", guestPhone: "+91 88888 77777", message: "Is the studio pet-friendly? I have a small dog. Also wondering about parking availability.", status: "closed", createdAt: new Date(now.getTime() - 14 * 86400000).toISOString() },
-    ];
-
-    for (const e of seedEnquiries) {
-      await storage.createEnquiry(e);
-    }
-
-    const seedReviews = [
-      { propertyId: createdProperties[0].id, guestName: "Sarah Jenkins", platform: "airbnb", rating: 5, reviewText: "Absolutely stunning haveli! The hand-painted frescoes and marble courtyard transported us back in time. Modern amenities blended seamlessly with heritage charm. The host was incredibly attentive and arranged a private heritage tour for us.", responseText: "Thank you so much, Sarah! We're thrilled you enjoyed the heritage experience. Looking forward to hosting you again!", reviewDate: new Date(now.getTime() - 5 * 86400000).toISOString() },
-      { propertyId: createdProperties[0].id, guestName: "Rajesh Mehta", platform: "google", rating: 4, reviewText: "Beautiful property with authentic Rajasthani character. The pool area is lovely. Only minor issue was some noise from the street in the morning, but overall a wonderful stay.", responseText: "Thank you for the feedback, Rajesh! We're working on additional soundproofing for the street-facing rooms.", reviewDate: new Date(now.getTime() - 15 * 86400000).toISOString() },
-      { propertyId: createdProperties[1].id, guestName: "Michael Chen", platform: "booking", rating: 5, reviewText: "Perfect city apartment! Super modern, clean, and well-located. The panoramic views from the living room were incredible. Walking distance to everything we needed.", reviewDate: new Date(now.getTime() - 8 * 86400000).toISOString() },
-      { propertyId: createdProperties[1].id, guestName: "Priya Sharma", platform: "airbnb", rating: 4, reviewText: "Great apartment for a business trip. Fast WiFi, comfortable workspace, and the gym was a bonus. Would have loved a coffee machine but otherwise excellent.", responseText: "Thanks Priya! Great suggestion — we've now added a Nespresso machine for future guests.", reviewDate: new Date(now.getTime() - 20 * 86400000).toISOString() },
-      { propertyId: createdProperties[2].id, guestName: "David Thompson", platform: "direct", rating: 5, reviewText: "The most luxurious stay we've ever had in India. The views of Jal Mahal at sunset from our private terrace were unforgettable. Butler service was impeccable. Worth every rupee!", responseText: "What a wonderful review, David! We're so glad you and your partner enjoyed the anniversary celebration. The sunset views are truly magical.", reviewDate: new Date(now.getTime() - 3 * 86400000).toISOString() },
-      { propertyId: createdProperties[2].id, guestName: "Ananya Desai", platform: "google", rating: 4, reviewText: "Extraordinary property with top-notch service. The lake views are breathtaking. Only giving 4 stars because the spa was closed for maintenance during our visit, but everything else was perfect.", reviewDate: new Date(now.getTime() - 25 * 86400000).toISOString() },
-      { propertyId: createdProperties[3].id, guestName: "Emily Davis", platform: "airbnb", rating: 5, reviewText: "Such a charming little studio! Beautifully decorated with authentic Rajasthani textiles. Perfect for solo travellers. The location near Johari Bazaar is unbeatable for shopping and street food.", responseText: "Thank you Emily! So glad you loved the Rajasthani touches. Hope you found some great gems at Johari Bazaar!", reviewDate: new Date(now.getTime() - 12 * 86400000).toISOString() },
-      { propertyId: createdProperties[3].id, guestName: "Tom Wilson", platform: "booking", rating: 3, reviewText: "Decent studio in a great location. A bit small for two people with luggage. The AC worked well but the hot water took a while. Good value for money though.", responseText: "Thank you for your honest feedback, Tom. We've upgraded the water heater to ensure instant hot water. We appreciate your suggestions!", reviewDate: new Date(now.getTime() - 30 * 86400000).toISOString() },
-      { propertyId: createdProperties[0].id, guestName: "Lisa Anderson", platform: "booking", rating: 5, reviewText: "A truly magical heritage stay. The courtyard dining experience was the highlight — eating under the stars surrounded by 200-year-old architecture. The staff went above and beyond.", reviewDate: new Date(now.getTime() - 40 * 86400000).toISOString() },
-      { propertyId: createdProperties[2].id, guestName: "James Wilson", platform: "airbnb", rating: 5, reviewText: "If you want to feel like royalty in Jaipur, this is the place. The palace suite is enormous and beautifully furnished. The lake view is something out of a movie. Absolutely flawless experience.", responseText: "Thank you James! We strive to deliver a royal experience and your words mean the world to us.", reviewDate: new Date(now.getTime() - 18 * 86400000).toISOString() },
-    ];
-
-    for (const r of seedReviews) {
-      await storage.createReview(r);
-    }
-
-    res.json({ message: "Seed data created successfully" });
-  });
+  // Seed endpoint removed — app starts with empty state (demo data moved to demo branch)
 
   app.get("/api/gallery", async (_req, res) => {
     const images = await storage.getGalleryImages();
@@ -514,7 +321,7 @@ export async function registerRoutes(
           const response = await fetch(link.url, {
             signal: controller.signal,
             headers: {
-              "User-Agent": "Mozilla/5.0 (compatible; HostSpaceBot/1.0)",
+              "User-Agent": "Mozilla/5.0 (compatible; AirManagerBot/1.0)",
               "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             },
           });
@@ -574,7 +381,7 @@ export async function registerRoutes(
         `--- ${r.label} (${r.linkType}) [${r.url}] ---\n${r.content}`
       ).join("\n\n");
 
-      const systemPrompt = `You are a property data extraction assistant for a luxury rental property management business in Jaipur, India. Your job is to analyze content fetched from various listing platforms and resources, then extract and structure property details.
+      const systemPrompt = `You are a property data extraction assistant for a short-term rental property management business. Your job is to analyze content fetched from various listing platforms and resources, then extract and structure property details.
 
 You will receive:
 1. The current property data we already have
@@ -586,7 +393,7 @@ The fields you can return are:
 - name (string): Property name
 - description (string): A compelling, detailed description
 - propertyType (string): one of "apartment", "haveli", "villa", "studio", "bungalow", "penthouse"
-- nightlyRate (number): Nightly rate in INR (₹)
+- nightlyRate (number): Nightly rate in USD ($)
 - bedrooms (number)
 - bathrooms (number)
 - maxGuests (number)

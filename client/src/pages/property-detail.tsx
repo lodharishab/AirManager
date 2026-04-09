@@ -34,7 +34,7 @@ import {
   Ruler,
   Clock,
   Calendar,
-  IndianRupee,
+
   ExternalLink,
   Plus,
   Trash2,
@@ -102,7 +102,7 @@ const FIELD_LABELS: Record<string, string> = {
   name: "Property Name",
   description: "Description",
   propertyType: "Property Type",
-  nightlyRate: "Nightly Rate (₹)",
+  nightlyRate: "Nightly Rate ($)",
   bedrooms: "Bedrooms",
   bathrooms: "Bathrooms",
   maxGuests: "Max Guests",
@@ -258,7 +258,7 @@ export default function PropertyDetail() {
 
   const formatFieldValue = (key: string, value: any): string => {
     if (Array.isArray(value)) return value.join(", ");
-    if (typeof value === "number" && key === "nightlyRate") return `₹${value.toLocaleString("en-IN")}`;
+    if (typeof value === "number" && key === "nightlyRate") return `$${value.toLocaleString()}`;
     if (typeof value === "number") return String(value);
     if (typeof value === "string" && value.length > 120) return value.slice(0, 120) + "…";
     return String(value);
@@ -406,7 +406,7 @@ export default function PropertyDetail() {
           ) : (
             <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 text-white">
               <div className="text-xs text-white/60 uppercase tracking-wider">Nightly Rate</div>
-              <div className="text-xl font-bold flex items-center"><IndianRupee className="h-4 w-4" />{property.nightlyRate.toLocaleString("en-IN")}</div>
+              <div className="text-xl font-bold flex items-center">${property.nightlyRate.toLocaleString()}</div>
             </div>
           )}
           <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 text-white">
@@ -415,7 +415,7 @@ export default function PropertyDetail() {
           </div>
           <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 text-white">
             <div className="text-xs text-white/60 uppercase tracking-wider">Monthly Revenue</div>
-            <div className="text-xl font-bold flex items-center"><IndianRupee className="h-4 w-4" />{property.monthlyRevenue.toLocaleString("en-IN")}</div>
+            <div className="text-xl font-bold flex items-center">${property.monthlyRevenue.toLocaleString()}</div>
           </div>
         </div>
       </div>
@@ -535,7 +535,7 @@ export default function PropertyDetail() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Nightly Rate (₹)</Label>
+                        <Label>Nightly Rate ($)</Label>
                         <Input
                           data-testid="input-room-rate"
                           type="number"
@@ -580,7 +580,7 @@ export default function PropertyDetail() {
                         <div>
                           <div className="font-medium text-sm">{room.roomType}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            {room.roomCount} room{room.roomCount > 1 ? "s" : ""} · ₹{room.nightlyRate.toLocaleString("en-IN")}/night
+                            {room.roomCount} room{room.roomCount > 1 ? "s" : ""} · ${room.nightlyRate.toLocaleString()}/night
                           </div>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -644,11 +644,11 @@ export default function PropertyDetail() {
                         <div>
                           <div className="font-medium text-sm">{booking.guestName}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            {new Date(booking.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} — {new Date(booking.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            {new Date(booking.checkIn).toLocaleDateString("en-US", { day: "numeric", month: "short" })} — {new Date(booking.checkOut).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold text-sm flex items-center"><IndianRupee className="h-3 w-3" />{booking.totalAmount.toLocaleString("en-IN")}</span>
+                          <span className="font-semibold text-sm flex items-center">${booking.totalAmount.toLocaleString()}</span>
                           <Badge className={`${bookingStatus} text-xs uppercase`}>{booking.status}</Badge>
                         </div>
                       </div>
@@ -718,7 +718,7 @@ export default function PropertyDetail() {
                             <p className="text-xs text-muted-foreground line-clamp-2">"{review.reviewText}"</p>
                           )}
                           <div className="text-xs text-muted-foreground/60 mt-1">
-                            {new Date(review.reviewDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            {new Date(review.reviewDate).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
                           </div>
                         </div>
                       ))}
@@ -926,7 +926,7 @@ export default function PropertyDetail() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Nightly Rate (₹)</Label>
+                <Label>Nightly Rate ($)</Label>
                 <Input type="number" value={editData.nightlyRate || ""} onChange={(e) => setEditData(d => ({ ...d, nightlyRate: Number(e.target.value) }))} />
               </div>
               <div className="space-y-2">
@@ -1009,7 +1009,7 @@ export default function PropertyDetail() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nightly Rate (₹)</Label>
+                <Label>Nightly Rate ($)</Label>
                 <Input
                   data-testid="input-edit-room-rate"
                   type="number"

@@ -207,17 +207,6 @@ export function useSendMessage() {
   });
 }
 
-export function useSeedData() {
-  return useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/seed");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries();
-    },
-  });
-}
 
 export function useGalleryImages() {
   return useQuery<GalleryImage[]>({

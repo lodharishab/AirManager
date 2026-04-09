@@ -154,7 +154,7 @@ export default function AIChatbot() {
                 <Bot className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-sm font-serif tracking-wide text-primary">HostSpace AI</h3>
+                <h3 className="font-bold text-sm font-serif tracking-wide text-primary">AirManager AI</h3>
                 <p className="text-[10px] text-muted-foreground">Property management assistant</p>
               </div>
             </div>
@@ -188,8 +188,8 @@ export default function AIChatbot() {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h4 className="font-serif text-primary font-bold text-lg mb-2">Welcome to HostSpace AI</h4>
-                <p className="text-sm text-muted-foreground mb-6">Your luxury property management assistant. Ask me about bookings, revenue, guest communications, or Jaipur recommendations.</p>
+                <h4 className="font-serif text-primary font-bold text-lg mb-2">Welcome to AirManager AI</h4>
+                <p className="text-sm text-muted-foreground mb-6">Your property management assistant. Ask me about bookings, revenue, guest communications, or pricing strategy.</p>
                 <div className="space-y-2 w-full">
                   {["How can I improve occupancy rates?", "Draft a welcome message for guests", "Suggest pricing for peak season"].map((suggestion) => (
                     <button
@@ -245,7 +245,7 @@ export default function AIChatbot() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-                placeholder="Ask HostSpace AI..."
+                placeholder="Ask AirManager AI..."
                 className="flex-1 bg-background border-border rounded-full pl-4 pr-12 h-10 text-sm"
                 disabled={isStreaming}
               />

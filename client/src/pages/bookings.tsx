@@ -162,7 +162,7 @@ export default function Bookings() {
                     data-testid="input-guest-name"
                     value={newBooking.guestName}
                     onChange={(e) => setNewBooking(b => ({ ...b, guestName: e.target.value }))}
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="e.g. Jane Smith"
                   />
                 </div>
                 <div className="space-y-2">
@@ -195,7 +195,7 @@ export default function Bookings() {
                         <SelectContent>
                           {propertyRooms.map(r => (
                             <SelectItem key={r.id} value={String(r.id)}>
-                              {r.roomType} — ₹{r.nightlyRate.toLocaleString("en-IN")}/night ({r.roomCount} available)
+                              {r.roomType} — ${r.nightlyRate.toLocaleString()}/night ({r.roomCount} available)
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -240,7 +240,7 @@ export default function Bookings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Total Amount (₹){isRoomBased && selectedRoom ? " (auto-calculated)" : ""}</Label>
+                  <Label>Total Amount ($){isRoomBased && selectedRoom ? " (auto-calculated)" : ""}</Label>
                   <Input
                     data-testid="input-total-amount"
                     type="number"
@@ -350,7 +350,7 @@ export default function Bookings() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        ₹{booking.totalAmount.toLocaleString()}
+                        ${booking.totalAmount.toLocaleString()}
                       </TableCell>
                     </TableRow>
                   );

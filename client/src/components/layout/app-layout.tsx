@@ -41,7 +41,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
             <Home size={18} />
           </div>
-          HostSpace
+          AirManager
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -79,7 +79,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <Button variant="ghost" size="icon">
               <Menu size={20} />
             </Button>
-            <div className="text-primary font-bold text-xl font-serif">HostSpace</div>
+            <div className="text-primary font-bold text-xl font-serif">AirManager</div>
           </div>
 
           <div className="hidden md:flex items-center bg-muted/50 rounded-full px-4 py-2 w-96 border focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">

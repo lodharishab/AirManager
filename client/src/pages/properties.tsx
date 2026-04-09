@@ -126,7 +126,7 @@ export default function Properties() {
                     data-testid="input-property-name"
                     value={newProperty.name}
                     onChange={(e) => setNewProperty(p => ({ ...p, name: e.target.value }))}
-                    placeholder="e.g. Royal Heritage Haveli"
+                    placeholder="e.g. Beachfront Villa"
                   />
                 </div>
                 <div className="space-y-2">
@@ -135,7 +135,7 @@ export default function Properties() {
                     data-testid="input-property-address"
                     value={newProperty.address}
                     onChange={(e) => setNewProperty(p => ({ ...p, address: e.target.value }))}
-                    placeholder="e.g. C-Scheme, Jaipur, RJ"
+                    placeholder="e.g. 123 Ocean Drive, Miami, FL"
                   />
                 </div>
                 <div className="space-y-2">
@@ -160,7 +160,7 @@ export default function Properties() {
                 </div>
                 {newProperty.bookingMode === "whole" && (
                   <div className="space-y-2">
-                    <Label>Nightly Rate (₹)</Label>
+                    <Label>Nightly Rate ($)</Label>
                     <Input
                       data-testid="input-property-rate"
                       type="number"
@@ -268,7 +268,7 @@ export default function Properties() {
                     {property.bookingMode === "room_based" ? "Booking" : "Nightly Rate"}
                   </p>
                   <p className="font-semibold text-lg mt-1">
-                    {property.bookingMode === "room_based" ? "Per Room" : `₹${property.nightlyRate.toLocaleString("en-IN")}`}
+                    {property.bookingMode === "room_based" ? "Per Room" : `$${property.nightlyRate.toLocaleString()}`}
                   </p>
                 </div>
                 <div>
