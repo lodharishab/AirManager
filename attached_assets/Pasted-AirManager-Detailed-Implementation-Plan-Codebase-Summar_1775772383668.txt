@@ -1,0 +1,122 @@
+AirManager — Detailed Implementation Plan
+Codebase Summary
+AirManager is a fullstack TypeScript short-term rental property management dashboard built with React 19 + Vite (frontend), Express 5 (backend), PostgreSQL + Drizzle ORM (database), and OpenAI (AI features). It has a luxury dark theme with gold accents, 10 pages, 40+ API routes, 12 database tables, 60+ shadcn/ui components, and zero tests.
+
+Phase 1: Security & Foundation (Critical — Blockers)
+1.1 Authentication & Authorization
+Implement Passport.js local strategy middleware (already a dependency, users table exists, but no middleware is wired)
+Add login/register API routes (POST /api/auth/login, POST /api/auth/register, POST /api/auth/logout, GET /api/auth/me)
+Protect all /api/* routes with ensureAuthenticated middleware (except auth routes)
+Add session management with express-session + connect-pg-simple (both are dependencies already)
+Add a client-side login page and auth context/hook
+Redirect unauthenticated users to login
+1.2 Environment Variable Validation
+Create a server/config.ts module that validates all required env vars at startup (DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY) with clear error messages
+Gracefully degrade optional features (Google Drive import, AI chatbot) when keys are missing instead of crashing
+1.3 CORS Configuration
+Add cors middleware to Express with appropriate origin whitelist for development and production modes
+1.4 Rate Limiting
+Add express-rate-limit on all API routes, with stricter limits on AI/OpenAI endpoints and Google Drive import
+Phase 2: Data Integrity & Error Handling
+2.1 Consistent Input Validation
+Standardize all routes to use Zod .parse() — several routes (rooms, reviews, property links) use inline checks instead of Zod
+Harden property link URL validation to block javascript: and data: protocols (currently only checks for http/https prefix)
+Validate Google Drive folder URL extraction more robustly (currently uses loose regex)
+2.2 Error Handling Improvements
+Wrap all async route handlers in a consistent asyncHandler utility to catch unhandled promise rejections
+Add structured error logging (consider Winston or Pino) instead of bare console.error
+Add request timeout middleware for all API routes
+Add max-duration limits on SSE streaming responses (AI enrichment, chatbot)
+2.3 Database Schema Hardening
+Add unique constraints where appropriate (e.g., property name + address combo, prevent duplicate bookings for same dates)
+Add database-level cascade deletes for all foreign keys (currently done manually in route handlers)
+Add soft-delete columns (deletedAt) on critical tables (properties, bookings) for audit trail
+Commit and version-control the migrations/ directory
+Phase 3: Testing
+3.1 Backend Unit Tests
+Set up a test framework (Vitest, since Vite is already used)
+Add unit tests for server/storage.ts (DatabaseStorage CRUD methods)
+Add integration tests for critical API routes (properties, bookings, auth)
+Add validation tests for all Zod schemas
+3.2 Frontend Tests
+Add React Testing Library + Vitest for component tests
+Test critical hooks in lib/api.ts (query hooks, mutation hooks)
+Test page-level rendering for dashboard, properties, bookings
+Test AI chatbot streaming behavior
+3.3 E2E Tests (Optional, Phase 4+)
+Consider Playwright for critical user flows (create property → add booking → view dashboard)
+Phase 4: Feature Completions & UX
+4.1 Settings Page (Currently Non-Functional)
+Wire up profile update (username, password change) to real API endpoints
+Implement notification preferences (email toggle, push toggle) stored in a new user_preferences table
+Remove placeholder billing/security tabs or implement them
+4.2 Pagination & Performance
+Add server-side pagination to all list endpoints (properties, bookings, enquiries, gallery, reviews) — currently return all records
+Add cursor-based or offset pagination parameters
+Update React Query hooks to support pagination
+Add virtual scrolling for large gallery grids
+4.3 Dashboard Enhancements
+Make revenue chart data dynamic based on actual booking data (currently uses separate revenueData table)
+Add date range filters to dashboard KPIs
+Add occupancy trend charts
+4.4 Search & Filtering
+Add server-side search for properties (name, address, neighborhood)
+Add date-range filtering for bookings and enquiries
+Add full-text search for reviews
+4.5 Mobile Optimization
+Audit and fix responsive layouts on all pages (property-detail.tsx at 1,219 lines is the most complex)
+Improve touch targets in table views
+Test sidebar navigation on mobile breakpoints
+Phase 5: AI Features Polish
+5.1 Fix AI Model Configuration
+Update the AI chatbot model from gpt-5-mini to a valid OpenAI model name (e.g., gpt-4-turbo or gpt-4o)
+Externalize the system prompt to a configuration file instead of hardcoding in routes.ts
+Add model selection as an admin setting
+5.2 AI Enrichment Improvements
+Add retry logic for failed link content fetches during property enrichment
+Add progress indicators showing which links are being processed
+Cache enrichment results to avoid redundant API calls
+Phase 6: Code Quality & DevOps
+6.1 Code Quality
+Add ESLint + Prettier configuration (none exists currently)
+Reduce any types in server code (18 instances) and type assertions in client (104 instances)
+Extract the 1,219-line property-detail.tsx into smaller sub-components
+Remove unused mock-data.ts from production bundle
+6.2 Documentation
+Add a proper README.md (only replit.md exists)
+Document API endpoints (OpenAPI/Swagger spec)
+Add JSDoc comments to storage interface methods
+Document environment variable requirements
+6.3 CI/CD
+Add GitHub Actions workflow for: TypeScript type checking (npm run check), linting, tests
+Add pre-commit hooks (husky + lint-staged)
+Add production build verification in CI
+6.4 Monitoring & Observability
+Add health check endpoint (GET /api/health)
+Add structured request logging with correlation IDs
+Add error tracking integration (Sentry or similar)
+Priority Order (Recommended Execution Sequence)
+Priority	Phase	Effort	Impact
+🔴 P0	1.1 Authentication	High	Security blocker
+🔴 P0	1.2 Env validation	Low	Reliability
+🔴 P0	2.2 Error handling	Medium	Stability
+🟡 P1	1.3 CORS	Low	Security
+🟡 P1	1.4 Rate limiting	Low	Security
+🟡 P1	2.1 Validation consistency	Medium	Data integrity
+🟡 P1	3.1 Backend tests	High	Quality
+🟢 P2	4.1 Settings page	Medium	Feature completion
+🟢 P2	4.2 Pagination	Medium	Performance
+🟢 P2	6.1 Code quality	Medium	Maintainability
+🟢 P2	6.2 Documentation	Medium	Developer experience
+🔵 P3	3.2 Frontend tests	High	Quality
+🔵 P3	4.3-4.5 UX improvements	High	User experience
+🔵 P3	5.1-5.2 AI polish	Medium	Feature quality
+🔵 P3	6.3-6.4 CI/CD & monitoring	Medium	Operations
+Key Technical Notes
+Tech stack: React 19, Express 5, Vite 7, Drizzle ORM, PostgreSQL 16, TypeScript 5.6, Tailwind 4, shadcn/ui
+Build: npm run build → esbuild (server) + Vite (client) → dist/
+Type check: npm run check (tsc)
+DB migrations: npm run db:push (drizzle-kit push)
+Path aliases: @/* → client/src/*, @shared/* → shared/*
+Existing but unused auth deps: passport, passport-local, express-session, connect-pg-simple (all installed but not wired)
+Largest files to refactor: property-detail.tsx (1,219 lines), routes.ts (576 lines), gallery.tsx (652 lines)
