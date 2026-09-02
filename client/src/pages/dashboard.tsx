@@ -34,7 +34,7 @@ export default function Dashboard() {
   const recentBookings = bookingsResult?.data || [];
 
   const { primaryCurrency, hasMixedCurrencies, currencyCodes } = useMemo(() => {
-    const codes = [...new Set(properties.map(p => p.currency || "USD"))];
+    const codes = Array.from(new Set(properties.map(p => p.currency || "USD")));
     return {
       primaryCurrency: codes[0] || "USD",
       hasMixedCurrencies: codes.length > 1,

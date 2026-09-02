@@ -593,7 +593,7 @@ export default function Expenses() {
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{expense.description}</p>
                       )}
                     </div>
-                    <p className="font-semibold text-sm shrink-0">{"\u20B9"}{formatINR(expense.amount)}</p>
+                    <p className="font-semibold text-sm shrink-0">{formatCurrency(expense.amount, getPropertyCurrency(expense.propertyId))}</p>
                   </div>
                   <div className="flex items-center justify-end gap-1">
                     {expense.receiptUrl && (

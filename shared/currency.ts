@@ -16,7 +16,7 @@ export type CurrencyCode = typeof SUPPORTED_CURRENCIES[number]["code"];
 const currencyMap = new Map(SUPPORTED_CURRENCIES.map(c => [c.code, c]));
 
 export function getCurrencyInfo(code: string) {
-  return currencyMap.get(code) || currencyMap.get("USD")!;
+  return currencyMap.get(code as CurrencyCode) || currencyMap.get("USD")!;
 }
 
 export function formatCurrency(amount: number, currencyCode: string = "USD"): string {

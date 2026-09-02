@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useGuests, useCreateGuest } from "@/lib/api";
+import { useGuests, useCreateGuest, useDeleteGuest } from "@/lib/api";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
