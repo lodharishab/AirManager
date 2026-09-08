@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: airmanager
+      POSTGRES_PASSWORD: airmanager
+      POSTGRES_DB: airmanager
+    volumes:
+      - airmanager-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airmanager"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:5002:5000"
+    environment:
+      DATABASE_URL: postgres://airmanager:airmanager@db:5432/airmanager
+      SESSION_SECRET: ${SESSION_SECRET:-airmanager-local-dev-secret}
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npm run db:push && npm run dev"
+    restart: unless-stopped
+
+volumes:
+  airmanager-db-data:

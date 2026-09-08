@@ -9,7 +9,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push",
+    "db:push": "drizzle-kit push --force",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write 'client/src/**/*.{ts,tsx}' 'server/**/*.ts' 'shared/**/*.ts'",
     "test": "vitest run"

@@ -1,164 +1,84 @@
-import { beforeAll, afterEach, afterAll } from "vitest";
+import { afterEach, afterAll } from "vitest";
+import { execFileSync } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
 import { sql } from "drizzle-orm";
-import { pool, db } from "../server/db";
+import pg from "pg";
+import type { Pool } from "pg";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "../shared/schema";
 
-const TEST_SCHEMA = `test_run_${Date.now()}`;
+const BASE_DB_URL = process.env.DATABASE_URL || "";
+const TEST_DB_NAME = `airmanager_test_${process.pid}`;
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function assertTestEnvironment() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Refusing to run tests in production environment.");
   }
-  const dbUrl = process.env.DATABASE_URL || "";
-  if (dbUrl.includes("prod") || dbUrl.includes("production")) {
+  if (BASE_DB_URL.includes("prod") || BASE_DB_URL.includes("production")) {
     throw new Error("Refusing to run tests against a production database URL.");
   }
-}
-
-async function setSearchPath(client: ReturnType<Awaited<ReturnType<typeof pool.connect>>>) {
-  await client.query(`SET search_path TO "${TEST_SCHEMA}", public`);
-}
-
-beforeAll(async () => {
-  assertTestEnvironment();
-
-  const client = await pool.connect();
-  try {
-    await client.query(`CREATE SCHEMA IF NOT EXISTS "${TEST_SCHEMA}"`);
-    await setSearchPath(client);
-
-    const tablesDDL = `
-      CREATE TABLE "${TEST_SCHEMA}".users (
-        id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".properties (
-        id SERIAL PRIMARY KEY, name TEXT NOT NULL, address TEXT NOT NULL,
-        nightly_rate INTEGER NOT NULL, image_url TEXT, status TEXT NOT NULL DEFAULT 'active',
-        occupancy_rate INTEGER NOT NULL DEFAULT 0, monthly_revenue INTEGER NOT NULL DEFAULT 0,
-        description TEXT, property_type TEXT DEFAULT 'apartment', bedrooms INTEGER DEFAULT 1,
-        bathrooms INTEGER DEFAULT 1, max_guests INTEGER DEFAULT 2, square_feet INTEGER,
-        amenities TEXT[], check_in_time TEXT DEFAULT '14:00', check_out_time TEXT DEFAULT '11:00',
-        minimum_stay INTEGER DEFAULT 1, house_rules TEXT, neighborhood TEXT,
-        booking_mode TEXT NOT NULL DEFAULT 'whole', ical_token TEXT,
-        currency TEXT NOT NULL DEFAULT 'USD', deleted_at TEXT,
-        CONSTRAINT properties_name_address_unique UNIQUE (name, address)
-      );
-      CREATE TABLE "${TEST_SCHEMA}".guests (
-        id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT, phone TEXT,
-        nationality TEXT, notes TEXT, tags TEXT[], created_at TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".rooms (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        room_type TEXT NOT NULL, room_count INTEGER NOT NULL, nightly_rate INTEGER NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".property_links (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        label TEXT NOT NULL, url TEXT NOT NULL, link_type TEXT NOT NULL DEFAULT 'other'
-      );
-      CREATE TABLE "${TEST_SCHEMA}".bookings (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        guest_name TEXT NOT NULL, check_in TEXT NOT NULL, check_out TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'upcoming', total_amount INTEGER NOT NULL,
-        guest_id INTEGER REFERENCES "${TEST_SCHEMA}".guests(id),
-        room_id INTEGER, room_count INTEGER, notes TEXT,
-        source TEXT NOT NULL DEFAULT 'manual', deleted_at TEXT,
-        CONSTRAINT bookings_property_dates_unique UNIQUE (property_id, check_in, check_out)
-      );
-      CREATE TABLE "${TEST_SCHEMA}".external_calendars (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        name TEXT NOT NULL, url TEXT NOT NULL, last_synced_at TEXT
-      );
-      CREATE TABLE "${TEST_SCHEMA}".conversations (
-        id SERIAL PRIMARY KEY, guest_name TEXT NOT NULL, property_name TEXT NOT NULL,
-        last_message TEXT, last_message_time TEXT, unread_count INTEGER NOT NULL DEFAULT 0,
-        avatar_url TEXT
-      );
-      CREATE TABLE "${TEST_SCHEMA}".messages (
-        id SERIAL PRIMARY KEY,
-        conversation_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".conversations(id) ON DELETE CASCADE,
-        sender_name TEXT NOT NULL, sender_type TEXT NOT NULL DEFAULT 'guest',
-        content TEXT NOT NULL, sent_at TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".revenue_data (
-        id SERIAL PRIMARY KEY, month TEXT NOT NULL, revenue INTEGER NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".gallery_images (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        image_url TEXT NOT NULL, title TEXT, tags TEXT[], star_rating INTEGER DEFAULT 0,
-        source TEXT DEFAULT 'manual', drive_file_id TEXT, created_at TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".expenses (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        category TEXT NOT NULL, amount INTEGER NOT NULL, description TEXT,
-        date TEXT NOT NULL, receipt_url TEXT
-      );
-      CREATE TABLE "${TEST_SCHEMA}".enquiries (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        guest_name TEXT NOT NULL, guest_email TEXT, guest_phone TEXT,
-        message TEXT, status TEXT NOT NULL DEFAULT 'new', created_at TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".reviews (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        guest_name TEXT NOT NULL, platform TEXT NOT NULL DEFAULT 'direct',
-        rating INTEGER NOT NULL, review_text TEXT, response_text TEXT,
-        review_date TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".housekeeping_tasks (
-        id SERIAL PRIMARY KEY,
-        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
-        type TEXT NOT NULL DEFAULT 'cleaning', title TEXT NOT NULL, description TEXT,
-        status TEXT NOT NULL DEFAULT 'pending', assignee TEXT, due_date TEXT,
-        priority TEXT NOT NULL DEFAULT 'medium', booking_id INTEGER
-      );
-      CREATE TABLE "${TEST_SCHEMA}".notifications (
-        id SERIAL PRIMARY KEY, type TEXT NOT NULL, title TEXT NOT NULL,
-        message TEXT NOT NULL, link TEXT, is_read INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL
-      );
-      CREATE TABLE "${TEST_SCHEMA}".user_preferences (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL UNIQUE REFERENCES "${TEST_SCHEMA}".users(id) ON DELETE CASCADE,
-        email_notifications BOOLEAN NOT NULL DEFAULT true,
-        push_notifications BOOLEAN NOT NULL DEFAULT true,
-        booking_alerts BOOLEAN NOT NULL DEFAULT true,
-        message_alerts BOOLEAN NOT NULL DEFAULT true,
-        notification_email TEXT
-      );
-    `;
-    await client.query(tablesDDL);
-  } finally {
-    client.release();
+  if (!BASE_DB_URL) {
+    throw new Error("DATABASE_URL must be set for integration tests.");
   }
+}
 
-  pool.on("connect", (client) => {
-    client.query(`SET search_path TO "${TEST_SCHEMA}", public`);
-  });
+function testDbUrl(): string {
+  const u = new URL(BASE_DB_URL);
+  u.pathname = `/${TEST_DB_NAME}`;
+  return u.toString();
+}
 
-  await db.execute(sql.raw(`SET search_path TO "${TEST_SCHEMA}", public`));
+function adminUrl(): string {
+  const u = new URL(BASE_DB_URL);
+  u.pathname = "/postgres";
+  return u.toString();
+}
+
+assertTestEnvironment();
+
+// Provision at module top level: setup modules evaluate before test modules,
+// so the DB URL must be final before the test's static imports create the pool.
+const admin = new pg.Pool({ connectionString: adminUrl() });
+await admin.query(`DROP DATABASE IF EXISTS "${TEST_DB_NAME}" WITH (FORCE)`);
+await admin.query(`CREATE DATABASE "${TEST_DB_NAME}"`);
+await admin.end();
+
+process.env.DATABASE_URL = testDbUrl();
+const { pool, db } = await import("../server/db");
+
+execFileSync(path.join(REPO_ROOT, "node_modules/.bin/drizzle-kit"), ["push", "--force"], {
+  cwd: REPO_ROOT,
+  env: { ...process.env, DATABASE_URL: testDbUrl() },
+  stdio: "pipe",
 });
 
+async function publicTables(client: pg.PoolClient): Promise<string[]> {
+  const res = await client.query<{ tablename: string }>(
+    `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'session' ORDER BY tablename`,
+  );
+  return res.rows.map((r) => r.tablename);
+}
+
+const client = await pool.connect();
+const tablesForCleanup = await publicTables(client);
+client.release();
+
 afterEach(async () => {
-  const tables = [
-    "user_preferences", "notifications", "housekeeping_tasks", "reviews",
-    "enquiries", "expenses", "gallery_images", "revenue_data", "messages",
-    "conversations", "bookings", "guests", "external_calendars", "rooms",
-    "property_links", "properties", "users",
-  ];
-  for (const table of tables) {
-    await db.execute(sql.raw(`DELETE FROM "${TEST_SCHEMA}"."${table}"`));
+  if (tablesForCleanup.length > 0) {
+    const list = tablesForCleanup.map((t) => `"${t}"`).join(", ");
+    await db.execute(sql.raw(`TRUNCATE ${list} RESTART IDENTITY CASCADE`));
   }
 });
 
 afterAll(async () => {
-  try {
-    await db.execute(sql.raw(`DROP SCHEMA IF EXISTS "${TEST_SCHEMA}" CASCADE`));
-  } catch { /* schema may not exist if setup failed */ }
   await pool.end();
+
+  const admin = new pg.Pool({ connectionString: adminUrl() });
+  try {
+    await admin.query(`DROP DATABASE IF EXISTS "${TEST_DB_NAME}" WITH (FORCE)`);
+  } finally {
+    await admin.end();
+  }
 });

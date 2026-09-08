@@ -1,7 +1,8 @@
-import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte } from "drizzle-orm";
+import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte, asc } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars,
+  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
+  followUpRules, followUps, priceRecommendations, tickets, ticketEvents,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
@@ -19,7 +20,25 @@ import {
   type UserPreferences, type InsertUserPreferences,
   type Guest, type InsertGuest,
   type ExternalCalendar, type InsertExternalCalendar,
+  type FollowUpRule, type InsertFollowUpRule,
+  type FollowUp, type InsertFollowUp,
+  type PriceRecommendation, type InsertPriceRecommendation,
+  type Ticket, type InsertTicket, type TicketEvent, type InsertTicketEvent,
 } from "@shared/schema";
+
+export interface FollowUpWithMeta extends FollowUp {
+  guestName: string | null;
+  propertyName: string | null;
+}
+
+export interface PriceRecommendationWithMeta extends PriceRecommendation {
+  propertyName: string | null;
+  propertyCurrency: string | null;
+}
+
+export interface TicketWithMeta extends Ticket {
+  propertyName: string | null;
+}
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -162,6 +181,40 @@ export interface IStorage {
   updateExternalCalendar(id: number, data: Partial<InsertExternalCalendar>): Promise<ExternalCalendar | undefined>;
   deleteExternalCalendar(id: number): Promise<void>;
   deleteExternalBookings(propertyId: number, source: string): Promise<void>;
+
+  getSetting(key: string): Promise<string | undefined>;
+  getSettings(prefix: string): Promise<Record<string, string>>;
+  setSetting(key: string, value: string): Promise<void>;
+
+  getFollowUpRules(): Promise<FollowUpRule[]>;
+  getFollowUpRule(id: number): Promise<FollowUpRule | undefined>;
+  createFollowUpRule(rule: InsertFollowUpRule): Promise<FollowUpRule>;
+  updateFollowUpRule(id: number, updates: Partial<InsertFollowUpRule>): Promise<FollowUpRule | undefined>;
+  deleteFollowUpRule(id: number): Promise<void>;
+
+  getFollowUps(status?: string): Promise<FollowUpWithMeta[]>;
+  getFollowUp(id: number): Promise<FollowUp | undefined>;
+  createFollowUp(followUp: InsertFollowUp): Promise<FollowUp>;
+  updateFollowUp(id: number, updates: Partial<InsertFollowUp>): Promise<FollowUp | undefined>;
+  getFollowUpStats(): Promise<{ pending: number; sent: number; failed: number; sentToday: number }>;
+  findFollowUpCandidates(rule: FollowUpRule, limit?: number): Promise<Enquiry[]>;
+
+  getPriceRecommendations(status?: string): Promise<PriceRecommendationWithMeta[]>;
+  createPriceRecommendation(rec: InsertPriceRecommendation): Promise<PriceRecommendation>;
+  updatePriceRecommendation(id: number, updates: Partial<InsertPriceRecommendation>): Promise<PriceRecommendation | undefined>;
+  getPendingPriceRecommendationCount(): Promise<number>;
+  expirePendingRecommendationsForProperty(propertyId: number): Promise<void>;
+
+  getTickets(status?: string): Promise<TicketWithMeta[]>;
+  getTicket(id: number): Promise<Ticket | undefined>;
+  createTicket(ticket: InsertTicket): Promise<Ticket>;
+  updateTicket(id: number, updates: Partial<InsertTicket>): Promise<Ticket | undefined>;
+  getTicketStats(): Promise<{ open: number; escalated: number; resolved: number }>;
+  getTicketEvents(ticketId: number): Promise<TicketEvent[]>;
+  addTicketEvent(event: InsertTicketEvent): Promise<TicketEvent>;
+  findUntriagedEnquiries(): Promise<Enquiry[]>;
+  findUntriagedLowReviews(): Promise<Review[]>;
+  hasTicketForSource(channel: string, sourceRefId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -883,6 +936,308 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExternalBookings(propertyId: number, source: string): Promise<void> {
     await db.delete(bookings).where(and(eq(bookings.propertyId, propertyId), eq(bookings.source, source)));
+  }
+
+  async getSetting(key: string): Promise<string | undefined> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value;
+  }
+
+  async getSettings(prefix: string): Promise<Record<string, string>> {
+    const rows = await db.select().from(appSettings).where(ilike(appSettings.key, `${prefix}%`));
+    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    await db
+      .insert(appSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+  }
+
+  async getFollowUpRules(): Promise<FollowUpRule[]> {
+    return db.select().from(followUpRules).orderBy(desc(followUpRules.createdAt));
+  }
+
+  async getFollowUpRule(id: number): Promise<FollowUpRule | undefined> {
+    const [rule] = await db.select().from(followUpRules).where(eq(followUpRules.id, id));
+    return rule;
+  }
+
+  async createFollowUpRule(rule: InsertFollowUpRule): Promise<FollowUpRule> {
+    const [created] = await db
+      .insert(followUpRules)
+      .values({ ...rule, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updateFollowUpRule(id: number, updates: Partial<InsertFollowUpRule>): Promise<FollowUpRule | undefined> {
+    const [updated] = await db
+      .update(followUpRules)
+      .set(updates)
+      .where(eq(followUpRules.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFollowUpRule(id: number): Promise<void> {
+    await db.delete(followUpRules).where(eq(followUpRules.id, id));
+  }
+
+  async getFollowUps(status?: string): Promise<FollowUpWithMeta[]> {
+    const base = db
+      .select({
+        id: followUps.id,
+        enquiryId: followUps.enquiryId,
+        ruleId: followUps.ruleId,
+        channel: followUps.channel,
+        recipient: followUps.recipient,
+        message: followUps.message,
+        status: followUps.status,
+        scheduledAt: followUps.scheduledAt,
+        sentAt: followUps.sentAt,
+        error: followUps.error,
+        createdAt: followUps.createdAt,
+        guestName: enquiries.guestName,
+        propertyName: properties.name,
+      })
+      .from(followUps)
+      .leftJoin(enquiries, eq(followUps.enquiryId, enquiries.id))
+      .leftJoin(properties, eq(enquiries.propertyId, properties.id));
+
+    const rows = status
+      ? await base.where(eq(followUps.status, status)).orderBy(desc(followUps.createdAt))
+      : await base.orderBy(desc(followUps.createdAt));
+    return rows;
+  }
+
+  async getFollowUp(id: number): Promise<FollowUp | undefined> {
+    const [row] = await db.select().from(followUps).where(eq(followUps.id, id));
+    return row;
+  }
+
+  async createFollowUp(followUp: InsertFollowUp): Promise<FollowUp> {
+    const [created] = await db
+      .insert(followUps)
+      .values({ ...followUp, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updateFollowUp(id: number, updates: Partial<InsertFollowUp>): Promise<FollowUp | undefined> {
+    const [updated] = await db
+      .update(followUps)
+      .set(updates)
+      .where(eq(followUps.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getFollowUpStats(): Promise<{ pending: number; sent: number; failed: number; sentToday: number }> {
+    const rows = await db
+      .select({ status: followUps.status, count: sql<number>`count(*)::int` })
+      .from(followUps)
+      .groupBy(followUps.status);
+    const byStatus = Object.fromEntries(rows.map((r) => [r.status, r.count]));
+    const today = new Date().toISOString().slice(0, 10);
+    const [sentToday] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(followUps)
+      .where(and(eq(followUps.status, "sent"), sql`${followUps.sentAt} >= ${today}`));
+    return {
+      pending: byStatus["pending"] || 0,
+      sent: byStatus["sent"] || 0,
+      failed: byStatus["failed"] || 0,
+      sentToday: sentToday?.count || 0,
+    };
+  }
+
+  async findFollowUpCandidates(rule: FollowUpRule, limit: number = 50): Promise<Enquiry[]> {
+    const cutoff = new Date(Date.now() - rule.delayHours * 3600_000).toISOString();
+    return db
+      .select()
+      .from(enquiries)
+      .where(
+        and(
+          eq(enquiries.status, "new"),
+          lte(enquiries.createdAt, cutoff),
+          sql`(SELECT COUNT(*) FROM ${followUps} WHERE ${followUps.enquiryId} = ${enquiries.id} AND ${followUps.status} <> 'cancelled') < ${rule.maxPerEnquiry}`,
+        ),
+      )
+      .orderBy(asc(enquiries.createdAt))
+      .limit(limit);
+  }
+
+  async getPriceRecommendations(status?: string): Promise<PriceRecommendationWithMeta[]> {
+    const base = db
+      .select({
+        id: priceRecommendations.id,
+        propertyId: priceRecommendations.propertyId,
+        currentPrice: priceRecommendations.currentPrice,
+        recommendedPrice: priceRecommendations.recommendedPrice,
+        reason: priceRecommendations.reason,
+        confidence: priceRecommendations.confidence,
+        status: priceRecommendations.status,
+        reviewedAt: priceRecommendations.reviewedAt,
+        metricsSnapshot: priceRecommendations.metricsSnapshot,
+        createdAt: priceRecommendations.createdAt,
+        propertyName: properties.name,
+        propertyCurrency: properties.currency,
+      })
+      .from(priceRecommendations)
+      .leftJoin(properties, eq(priceRecommendations.propertyId, properties.id));
+
+    const rows = status
+      ? await base.where(eq(priceRecommendations.status, status)).orderBy(desc(priceRecommendations.createdAt))
+      : await base.orderBy(desc(priceRecommendations.createdAt));
+    return rows;
+  }
+
+  async createPriceRecommendation(rec: InsertPriceRecommendation): Promise<PriceRecommendation> {
+    const [created] = await db
+      .insert(priceRecommendations)
+      .values({ ...rec, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updatePriceRecommendation(id: number, updates: Partial<InsertPriceRecommendation>): Promise<PriceRecommendation | undefined> {
+    const [updated] = await db
+      .update(priceRecommendations)
+      .set(updates)
+      .where(eq(priceRecommendations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPendingPriceRecommendationCount(): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(priceRecommendations)
+      .where(eq(priceRecommendations.status, "pending"));
+    return row?.count || 0;
+  }
+
+  async expirePendingRecommendationsForProperty(propertyId: number): Promise<void> {
+    await db
+      .update(priceRecommendations)
+      .set({ status: "superseded", reviewedAt: new Date().toISOString() })
+      .where(and(eq(priceRecommendations.propertyId, propertyId), eq(priceRecommendations.status, "pending")));
+  }
+
+  async getTickets(status?: string): Promise<TicketWithMeta[]> {
+    const base = db
+      .select({
+        id: tickets.id,
+        subject: tickets.subject,
+        description: tickets.description,
+        channel: tickets.channel,
+        priority: tickets.priority,
+        status: tickets.status,
+        propertyId: tickets.propertyId,
+        guestName: tickets.guestName,
+        sourceRefId: tickets.sourceRefId,
+        aiCategory: tickets.aiCategory,
+        needsHost: tickets.needsHost,
+        resolvedAt: tickets.resolvedAt,
+        createdAt: tickets.createdAt,
+        propertyName: properties.name,
+      })
+      .from(tickets)
+      .leftJoin(properties, eq(tickets.propertyId, properties.id));
+
+    const rows = status
+      ? await base.where(eq(tickets.status, status)).orderBy(desc(tickets.createdAt))
+      : await base.orderBy(desc(tickets.createdAt));
+    return rows;
+  }
+
+  async getTicket(id: number): Promise<Ticket | undefined> {
+    const [row] = await db.select().from(tickets).where(eq(tickets.id, id));
+    return row;
+  }
+
+  async createTicket(ticket: InsertTicket): Promise<Ticket> {
+    const [created] = await db
+      .insert(tickets)
+      .values({ ...ticket, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updateTicket(id: number, updates: Partial<InsertTicket>): Promise<Ticket | undefined> {
+    const [updated] = await db
+      .update(tickets)
+      .set(updates)
+      .where(eq(tickets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getTicketStats(): Promise<{ open: number; escalated: number; resolved: number }> {
+    const rows = await db
+      .select({ status: tickets.status, count: sql<number>`count(*)::int` })
+      .from(tickets)
+      .groupBy(tickets.status);
+    const byStatus = Object.fromEntries(rows.map((r) => [r.status, r.count]));
+    return {
+      open: byStatus["open"] || 0,
+      escalated: byStatus["escalated"] || 0,
+      resolved: byStatus["resolved"] || 0,
+    };
+  }
+
+  async getTicketEvents(ticketId: number): Promise<TicketEvent[]> {
+    return db
+      .select()
+      .from(ticketEvents)
+      .where(eq(ticketEvents.ticketId, ticketId))
+      .orderBy(asc(ticketEvents.createdAt));
+  }
+
+  async addTicketEvent(event: InsertTicketEvent): Promise<TicketEvent> {
+    const [created] = await db
+      .insert(ticketEvents)
+      .values({ ...event, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async findUntriagedEnquiries(): Promise<Enquiry[]> {
+    return db
+      .select()
+      .from(enquiries)
+      .where(
+        and(
+          eq(enquiries.status, "new"),
+          sql`NOT EXISTS (SELECT 1 FROM ${tickets} WHERE ${tickets.channel} = 'enquiry' AND ${tickets.sourceRefId} = ${enquiries.id})`,
+        ),
+      )
+      .orderBy(desc(enquiries.createdAt))
+      .limit(50);
+  }
+
+  async findUntriagedLowReviews(): Promise<Review[]> {
+    return db
+      .select()
+      .from(reviews)
+      .where(
+        and(
+          lte(reviews.rating, 3),
+          sql`NOT EXISTS (SELECT 1 FROM ${tickets} WHERE ${tickets.channel} = 'review' AND ${tickets.sourceRefId} = ${reviews.id})`,
+        ),
+      )
+      .limit(50);
+  }
+
+  async hasTicketForSource(channel: string, sourceRefId: number): Promise<boolean> {
+    const [row] = await db
+      .select({ id: tickets.id })
+      .from(tickets)
+      .where(and(eq(tickets.channel, channel), eq(tickets.sourceRefId, sourceRefId)))
+      .limit(1);
+    return Boolean(row);
   }
 }
 

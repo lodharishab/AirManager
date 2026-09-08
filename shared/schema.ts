@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -227,6 +227,105 @@ export const userPreferences = pgTable("user_preferences", {
 });
 
 export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({ id: true });
+
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Created by connect-pg-simple at runtime; declared here so drizzle-kit push
+// recognizes it instead of offering it as a rename candidate for new tables.
+export const sessions = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
+
+export const followUpRules = pgTable("follow_up_rules", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  trigger: text("trigger").notNull().default("enquiry_unanswered"), // enquiry_unanswered | booking_upcoming
+  delayHours: integer("delay_hours").notNull().default(24),
+  channel: text("channel").notNull().default("direct"), // direct | email | whatsapp | instagram
+  maxPerEnquiry: integer("max_per_enquiry").notNull().default(2),
+  promptTemplate: text("prompt_template"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type FollowUpRule = typeof followUpRules.$inferSelect;
+export type InsertFollowUpRule = typeof followUpRules.$inferInsert;
+export const insertFollowUpRuleSchema = createInsertSchema(followUpRules).omit({ id: true, createdAt: true });
+
+export const followUps = pgTable("follow_ups", {
+  id: serial("id").primaryKey(),
+  enquiryId: integer("enquiry_id").references(() => enquiries.id, { onDelete: "cascade" }),
+  ruleId: integer("rule_id").references(() => followUpRules.id, { onDelete: "set null" }),
+  channel: text("channel").notNull().default("direct"),
+  recipient: text("recipient"),
+  message: text("message"),
+  status: text("status").notNull().default("pending"), // pending | sent | failed | cancelled
+  scheduledAt: text("scheduled_at").notNull(),
+  sentAt: text("sent_at"),
+  error: text("error"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type FollowUp = typeof followUps.$inferSelect;
+export type InsertFollowUp = typeof followUps.$inferInsert;
+export const insertFollowUpSchema = createInsertSchema(followUps).omit({ id: true, createdAt: true });
+
+export const priceRecommendations = pgTable("price_recommendations", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(),
+  currentPrice: integer("current_price").notNull(),
+  recommendedPrice: integer("recommended_price").notNull(),
+  reason: text("reason").notNull(),
+  confidence: integer("confidence").notNull().default(0), // 0-100
+  status: text("status").notNull().default("pending"), // pending | approved | rejected | superseded
+  reviewedAt: text("reviewed_at"),
+  metricsSnapshot: text("metrics_snapshot"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type PriceRecommendation = typeof priceRecommendations.$inferSelect;
+export type InsertPriceRecommendation = typeof priceRecommendations.$inferInsert;
+export const insertPriceRecommendationSchema = createInsertSchema(priceRecommendations).omit({ id: true, createdAt: true });
+
+export const tickets = pgTable("tickets", {
+  id: serial("id").primaryKey(),
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  channel: text("channel").notNull().default("manual"), // manual | enquiry | review | voice | whatsapp | instagram | email
+  priority: text("priority").notNull().default("normal"), // low | normal | high | urgent
+  status: text("status").notNull().default("open"), // open | escalated | resolved | closed
+  propertyId: integer("property_id").references(() => properties.id, { onDelete: "set null" }),
+  guestName: text("guest_name"),
+  sourceRefId: integer("source_ref_id"), // enquiry/review/voice id that spawned it
+  aiCategory: text("ai_category"),
+  needsHost: boolean("needs_host").notNull().default(false),
+  resolvedAt: text("resolved_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = typeof tickets.$inferInsert;
+export const insertTicketSchema = createInsertSchema(tickets).omit({ id: true, createdAt: true });
+
+export const ticketEvents = pgTable("ticket_events", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").references(() => tickets.id, { onDelete: "cascade" }).notNull(),
+  type: text("type").notNull(), // created | triaged | escalated | resolved | closed | comment
+  body: text("body"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type TicketEvent = typeof ticketEvents.$inferSelect;
+export type InsertTicketEvent = typeof ticketEvents.$inferInsert;
+export const insertTicketEventSchema = createInsertSchema(ticketEvents).omit({ id: true, createdAt: true });
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;

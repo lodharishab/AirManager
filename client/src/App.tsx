@@ -17,6 +17,9 @@ import Messages from "./pages/messages";
 import Gallery from "./pages/gallery";
 import Expenses from "./pages/expenses";
 import Enquiries from "./pages/enquiries";
+import FollowUps from "./pages/followups";
+import Pricing from "./pages/pricing";
+import Tickets from "./pages/tickets";
 import Reviews from "./pages/reviews";
 import Housekeeping from "./pages/housekeeping";
 import CheckIns from "./pages/check-ins";
@@ -60,6 +63,9 @@ function ProtectedRouter() {
           <Route path="/messages" component={Messages} />
           <Route path="/expenses" component={Expenses} />
           <Route path="/enquiries" component={Enquiries} />
+          <Route path="/follow-ups" component={FollowUps} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/tickets" component={Tickets} />
           <Route path="/reviews" component={Reviews} />
           <Route path="/housekeeping" component={Housekeeping} />
           <Route path="/gallery" component={Gallery} />

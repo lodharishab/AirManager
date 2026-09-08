@@ -41,6 +41,11 @@ import {
   buildOverdueTaskEmail,
 } from "./email";
 import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectStorageUrl, getMimeType } from "./object-storage";
+import { getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
+import { runFollowUpSweep } from "./followups/engine";
+import { runPricingRecommendations, approvePriceRecommendation, rejectPriceRecommendation } from "./pricing/engine";
+import { runTriage } from "./tickets/engine";
+import { insertFollowUpRuleSchema, insertTicketSchema } from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -367,6 +372,190 @@ export async function registerRoutes(
 
   // Protect all remaining /api routes
   app.use("/api", requireAuth);
+
+  app.get("/api/settings/ai", asyncHandler(async (req, res) => {
+    const cfg = await getAiConfig();
+    const maskedKey = cfg.apiKey
+      ? `••••${cfg.apiKey.slice(-4)}`
+      : "";
+    res.json({
+      provider: cfg.provider,
+      baseUrl: cfg.baseUrl,
+      model: cfg.model,
+      hasApiKey: Boolean(cfg.apiKey),
+      maskedApiKey: maskedKey,
+    });
+  }));
+
+  app.put("/api/settings/ai", asyncHandler(async (req, res) => {
+    const body = req.body as Partial<{
+      provider: string;
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+    }>;
+    if (body.provider !== undefined && !AI_PROVIDERS.includes(body.provider as AiProvider)) {
+      return res.status(400).json({ message: `Unknown provider: ${body.provider}` });
+    }
+    const cfg = await saveAiConfig({
+      provider: body.provider as AiProvider | undefined,
+      baseUrl: body.baseUrl,
+      apiKey: body.apiKey,
+      model: body.model,
+    });
+    res.json({
+      provider: cfg.provider,
+      baseUrl: cfg.baseUrl,
+      model: cfg.model,
+      hasApiKey: Boolean(cfg.apiKey),
+      maskedApiKey: cfg.apiKey ? `••••${cfg.apiKey.slice(-4)}` : "",
+    });
+  }));
+
+  app.post("/api/settings/ai/test", asyncHandler(async (req, res) => {
+    const cfg = await getAiConfig();
+    const result = await testAiConnection(cfg);
+    res.json(result);
+  }));
+
+  app.get("/api/follow-up-rules", asyncHandler(async (req, res) => {
+    res.json(await storage.getFollowUpRules());
+  }));
+
+  app.post("/api/follow-up-rules", asyncHandler(async (req, res) => {
+    const parsed = insertFollowUpRuleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid follow-up rule", errors: parsed.error.flatten() });
+    }
+    res.json(await storage.createFollowUpRule(parsed.data));
+  }));
+
+  app.patch("/api/follow-up-rules/:id", asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertFollowUpRuleSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid rule update", errors: parsed.error.flatten() });
+    }
+    const rule = await storage.updateFollowUpRule(id, parsed.data);
+    if (!rule) return res.status(404).json({ message: "Rule not found" });
+    res.json(rule);
+  }));
+
+  app.delete("/api/follow-up-rules/:id", asyncHandler(async (req, res) => {
+    await storage.deleteFollowUpRule(Number(req.params.id));
+    res.json({ ok: true });
+  }));
+
+  app.get("/api/follow-ups", asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const allowed = ["pending", "sent", "failed", "cancelled"];
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status filter: ${status}` });
+    }
+    res.json(await storage.getFollowUps(status));
+  }));
+
+  app.get("/api/follow-ups/stats", asyncHandler(async (req, res) => {
+    res.json(await storage.getFollowUpStats());
+  }));
+
+  app.post("/api/follow-ups/run", asyncHandler(async (req, res) => {
+    res.json(await runFollowUpSweep());
+  }));
+
+  app.post("/api/follow-ups/:id/cancel", asyncHandler(async (req, res) => {
+    const followUp = await storage.updateFollowUp(Number(req.params.id), { status: "cancelled" });
+    if (!followUp) return res.status(404).json({ message: "Follow-up not found" });
+    res.json(followUp);
+  }));
+
+  app.get("/api/price-recommendations", asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const allowed = ["pending", "approved", "rejected", "superseded"];
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status filter: ${status}` });
+    }
+    res.json(await storage.getPriceRecommendations(status));
+  }));
+
+  app.post("/api/price-recommendations/run", asyncHandler(async (req, res) => {
+    res.json(await runPricingRecommendations());
+  }));
+
+  app.post("/api/price-recommendations/:id/approve", asyncHandler(async (req, res) => {
+    const rec = await approvePriceRecommendation(Number(req.params.id));
+    if (!rec) return res.status(404).json({ message: "Recommendation not found" });
+    res.json(rec);
+  }));
+
+  app.post("/api/price-recommendations/:id/reject", asyncHandler(async (req, res) => {
+    const rec = await rejectPriceRecommendation(Number(req.params.id));
+    if (!rec) return res.status(404).json({ message: "Recommendation not found" });
+    res.json(rec);
+  }));
+
+  app.get("/api/tickets", asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const allowed = ["open", "escalated", "resolved", "closed"];
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status filter: ${status}` });
+    }
+    res.json(await storage.getTickets(status));
+  }));
+
+  app.get("/api/tickets/stats", asyncHandler(async (req, res) => {
+    res.json(await storage.getTicketStats());
+  }));
+
+  app.post("/api/tickets", asyncHandler(async (req, res) => {
+    const parsed = insertTicketSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid ticket", errors: parsed.error.flatten() });
+    }
+    const ticket = await storage.createTicket(parsed.data);
+    await storage.addTicketEvent({ ticketId: ticket.id, type: "created", body: "Created manually" });
+    res.json(ticket);
+  }));
+
+  app.get("/api/tickets/:id/events", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    res.json(await storage.getTicketEvents(ticket.id));
+  }));
+
+  app.post("/api/tickets/:id/comment", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    const body = typeof req.body?.body === "string" ? req.body.body : "";
+    if (!body.trim()) return res.status(400).json({ message: "Comment body required" });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "comment", body }));
+  }));
+
+  app.post("/api/tickets/:id/resolve", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    const now = new Date().toISOString();
+    await storage.updateTicket(ticket.id, { status: "resolved", resolvedAt: now, needsHost: false });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "resolved", body: "Resolved" }));
+  }));
+
+  app.post("/api/tickets/:id/close", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    await storage.updateTicket(ticket.id, { status: "closed" });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "closed", body: "Closed" }));
+  }));
+
+  app.post("/api/tickets/:id/escalate", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    await storage.updateTicket(ticket.id, { status: "escalated", needsHost: true });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "escalated", body: "Manually escalated to host" }));
+  }));
+
+  app.post("/api/tickets/run-triage", asyncHandler(async (req, res) => {
+    res.json(await runTriage());
+  }));
 
   app.post("/api/upload", upload.array("files", 20), asyncHandler(async (req, res) => {
     const files = req.files as Express.Multer.File[];
