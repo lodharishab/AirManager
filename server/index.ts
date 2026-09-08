@@ -89,7 +89,19 @@ const driveLimiter = rateLimit({
   message: { message: "Too many Google Drive requests, please try again later." },
 });
 
+// Credential endpoints get a deliberately tight limit: the generic API limiter
+// (200 req / 15 min) is far too loose for online password guessing.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many sign-in attempts, please try again later." },
+});
+
 app.use("/api", generalLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
 app.use("/api/ai-chat", aiLimiter);
 app.use("/api/properties/:id/ai-enrich", aiLimiter);
 app.use("/api/gallery/import-drive", driveLimiter);

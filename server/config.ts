@@ -30,10 +30,16 @@ function validateConfig(): AppConfig {
     );
   }
 
-  const sessionSecret = process.env.SESSION_SECRET || "airmanager-dev-secret-2024";
+  // Fail closed in production: a missing secret would silently sign every
+  // session with a publicly-known default, making cookies forgeable. Dev and
+  // test keep the warning-only behaviour.
   if (!process.env.SESSION_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SESSION_SECRET must be set in production.");
+    }
     logWarning("[config] WARNING: SESSION_SECRET not set — using default dev secret. Set a strong random secret in production.");
   }
+  const sessionSecret = process.env.SESSION_SECRET || "airmanager-dev-secret-2024";
 
   const portRaw = process.env.PORT || "5000";
   const port = parseInt(portRaw, 10);
