@@ -1,6 +1,7 @@
 # Pending Work
 
-Last updated: 8 September 2026, after deploying `e0a8ade` (PR #3).
+Last updated: 8 September 2026, after deploying `e0a8ade` (PR #3) and
+auditing the MCP server (PR #5).
 
 This picks up where `docs/HANDOVER-20260908.md` left off. That document's
 "Remaining engineering work" list is now mostly closed; what follows is what
@@ -64,6 +65,111 @@ Fixed in `a0cc309`. CI now prevents the claim from drifting from reality again.
    failures are silently swallowed. There is no SMS or push provider. OTA
    ingestion is iCal only. Verify real delivery before depending on it.
 
+## MCP server — audited 8 September 2026 (PR #5)
+
+The adapter itself is **healthy**. `npm test` passes (1/1) on the VPS,
+`smoke.mjs` passes over both the Tailscale and public endpoints (11 tools OK;
+`get_expense` skipped only because the expense table is empty), and
+`get_health` returns `status: ok` / `database: connected`. Re-confirmed after
+the 20:50 reboot: `airmanager-mcp`, `airmanager` and `nginx` all came back.
+
+What the audit found is a **change in exposure**, not a broken service.
+
+### Done
+
+- `/etc/airmanager-mcp-clients/composio.json` was mode `0644` with a live
+  bearer token in it. Now `0600`, matching the other two clients.
+- `mcp/airmanager/README.md` corrected — it claimed "There is no public MCP
+  listener" and listed two clients. See PR #5.
+
+### Owner decision — blocking
+
+**Was the public MCP endpoint intentional?** On 8 September at 20:22 an nginx
+site `/etc/nginx/sites-enabled/app.zoellastays.com` was created that proxies
+the **entire domain root** (`location /`) to `127.0.0.1:5010`, and a third
+client `composio` was registered against it at 20:29. All 12 tools and every
+record the Air Manager API exposes — including guest contact details — are now
+reachable from the public internet, gated only by a bearer token.
+
+If Composio genuinely needs public reach, harden it (below). If it was a
+shortcut to get Composio connected, the better shape is Composio over
+Tailscale like OpenClaw, and the nginx site plus its DNS record come down.
+
+### Open — origin is unencrypted
+
+nginx declares only `listen 80`, **no TLS certificate exists anywhere on this
+host**, and UFW still allows `80/tcp` and `443/tcp` from Anywhere. The origin
+answers on its bare IP — verified: a request to `http://147.93.154.8/mcp` with
+`Host: app.zoellastays.com` returns 401, so the path exists outside Cloudflare
+entirely. Cloudflare is therefore in Flexible SSL mode and the bearer token
+crosses the Cloudflare-to-origin hop in cleartext.
+
+A prepared script sits at **`/root/harden-origin.sh`** (mode 700,
+syntax-checked, **not yet run**). It fetches Cloudflare's published ranges
+live, aborts if the count looks implausible, backs up `ufw status numbered`,
+restricts 80/443 to those ranges, then verifies both that the direct-IP bypass
+is closed and that the site still answers through Cloudflare. It does not
+touch SSH, Tailscale or the Docker rules.
+
+It only does the firewall half. Origin TLS needs a Cloudflare Origin
+Certificate from the dashboard, a `listen 443 ssl` block, and the zone set to
+Full (Strict). This hardening is worth doing **regardless** of the decision
+above, because `zoellastays.com` (the main app on port 5000) is Cloudflare-
+fronted too and has the identical bypass today.
+
+Consider also rotating the `composio` token, which was world-readable for
+about 15 minutes. Replace its entry in `MCP_CLIENT_TOKENS`, update the
+Composio side and its connection file, then restart only `airmanager-mcp`; the
+other two clients keep their tokens.
+
+### Open — no per-client authorization
+
+Every credential reaches every tool and every record. There is no per-property
+or per-user filtering in the adapter. Add it before sharing a credential with
+anyone who should see only part of the business.
+
+## Do not wire the in-app AI assistant to the MCP server
+
+This was investigated and rejected; the reasoning is recorded so it is not
+re-litigated. The MCP adapter's upstream is `AIRMANAGER_BASE_URL=
+http://127.0.0.1:5000` — the same Express process that serves the assistant.
+Routing the assistant through it means HTTP out to nginx, into the MCP
+service, and back into itself, to reach data the process already holds in
+memory, while adding a second credential, a 15-second timeout, a 2 MB response
+cap and a service that can fail independently.
+
+The MCP server keeps earning its place for **external** consumers with no
+in-process access: OpenClaw, n8n and Composio.
+
+The assistant's real problem is elsewhere. In
+`server/replit_integrations/chat/routes.ts:84-95` every message loads all
+properties and all bookings via `getAllBookings()`, keyword-matches guest
+names, dedupes to 150 records and stuffs them into a system message. So
+expenses, guests, rooms, check-ins and dashboard stats are never loaded and
+cannot be answered factually; relevance is guest-name matching with no date or
+property filter; and cost grows with total booking count on every message.
+
+The fix is tool-calling **in process**, borrowing the MCP tool contracts but
+not the transport:
+
+1. Add an optional `tools` param to `aiChat` in `server/ai/gateway.ts` (it
+   currently sends only `model`/`messages`/`temperature`/`max_tokens`) and
+   return `tool_calls`. Keep the signature backward-compatible so `ai-enrich`
+   at `server/routes.ts:1573` is untouched.
+2. Implement the same 12 tool schemas as thin wrappers over `storage.*`. Ten
+   map to a single existing method. Two do not: `get_check_ins` and
+   `get_dashboard_stats` are composed in route handlers
+   (`server/routes.ts:916` and `:1123`), so extract shared helpers the route
+   and the tool both call.
+3. Replace the context dump with an agentic loop, capped around 5 iterations,
+   keeping the 120s SSE budget.
+4. Fall back to today's context-stuffing when the provider lacks function
+   calling — the Sarvam provider likely does. Cover loop termination, the
+   iteration cap, and tool errors surfacing as text rather than 500s.
+
+Optional while in there: the SSE endpoint currently writes the whole response
+in a single `data:` frame, so streaming is cosmetic. Separable from the above.
+
 ## Engineering backlog — still open
 
 1. **Split `server/routes.ts` (2,238 lines) and `server/storage.ts` (1,272).**
@@ -114,8 +220,10 @@ Fixed in `a0cc309`. CI now prevents the claim from drifting from reality again.
   (`airmanager_test`, `airmanager_tests`, and seven `airmanager_test_<pid>`,
   created 2 September to 8 September 17:23). The teardown in `tests/setup.ts`
   works correctly — these predate it. Safe to drop.
-- **Working worktree** `/root/airmanager-work` on branch `fix/audit-followups`
-  is merged and can be removed:
+- **Working worktree** `/root/airmanager-work` was on `fix/audit-followups`
+  when this was written, but as of 8 September 20:44 it is on
+  `fix/gitignore-env-backups` with an untracked `docs/REBOOT-CHECKLIST.md` and
+  another session active in it. **Confirm it is idle before removing it**, then
   `git -C /opt/AirManager worktree remove /root/airmanager-work`. Two older
   worktrees under `/tmp` are also merged and disposable. Note `/tmp` here is
   ext4 on the root disk, not tmpfs, so nothing vanishes on reboot.
