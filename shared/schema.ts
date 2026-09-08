@@ -295,6 +295,38 @@ export type PriceRecommendation = typeof priceRecommendations.$inferSelect;
 export type InsertPriceRecommendation = typeof priceRecommendations.$inferInsert;
 export const insertPriceRecommendationSchema = createInsertSchema(priceRecommendations).omit({ id: true, createdAt: true });
 
+export const tickets = pgTable("tickets", {
+  id: serial("id").primaryKey(),
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  channel: text("channel").notNull().default("manual"), // manual | enquiry | review | voice | whatsapp | instagram | email
+  priority: text("priority").notNull().default("normal"), // low | normal | high | urgent
+  status: text("status").notNull().default("open"), // open | escalated | resolved | closed
+  propertyId: integer("property_id").references(() => properties.id, { onDelete: "set null" }),
+  guestName: text("guest_name"),
+  sourceRefId: integer("source_ref_id"), // enquiry/review/voice id that spawned it
+  aiCategory: text("ai_category"),
+  needsHost: boolean("needs_host").notNull().default(false),
+  resolvedAt: text("resolved_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = typeof tickets.$inferInsert;
+export const insertTicketSchema = createInsertSchema(tickets).omit({ id: true, createdAt: true });
+
+export const ticketEvents = pgTable("ticket_events", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").references(() => tickets.id, { onDelete: "cascade" }).notNull(),
+  type: text("type").notNull(), // created | triaged | escalated | resolved | closed | comment
+  body: text("body"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type TicketEvent = typeof ticketEvents.$inferSelect;
+export type InsertTicketEvent = typeof ticketEvents.$inferInsert;
+export const insertTicketEventSchema = createInsertSchema(ticketEvents).omit({ id: true, createdAt: true });
+
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 

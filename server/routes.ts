@@ -44,7 +44,8 @@ import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectSt
 import { getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
 import { runFollowUpSweep } from "./followups/engine";
 import { runPricingRecommendations, approvePriceRecommendation, rejectPriceRecommendation } from "./pricing/engine";
-import { insertFollowUpRuleSchema } from "@shared/schema";
+import { runTriage } from "./tickets/engine";
+import { insertFollowUpRuleSchema, insertTicketSchema } from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -491,6 +492,69 @@ export async function registerRoutes(
     const rec = await rejectPriceRecommendation(Number(req.params.id));
     if (!rec) return res.status(404).json({ message: "Recommendation not found" });
     res.json(rec);
+  }));
+
+  app.get("/api/tickets", asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const allowed = ["open", "escalated", "resolved", "closed"];
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status filter: ${status}` });
+    }
+    res.json(await storage.getTickets(status));
+  }));
+
+  app.get("/api/tickets/stats", asyncHandler(async (req, res) => {
+    res.json(await storage.getTicketStats());
+  }));
+
+  app.post("/api/tickets", asyncHandler(async (req, res) => {
+    const parsed = insertTicketSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid ticket", errors: parsed.error.flatten() });
+    }
+    const ticket = await storage.createTicket(parsed.data);
+    await storage.addTicketEvent({ ticketId: ticket.id, type: "created", body: "Created manually" });
+    res.json(ticket);
+  }));
+
+  app.get("/api/tickets/:id/events", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    res.json(await storage.getTicketEvents(ticket.id));
+  }));
+
+  app.post("/api/tickets/:id/comment", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    const body = typeof req.body?.body === "string" ? req.body.body : "";
+    if (!body.trim()) return res.status(400).json({ message: "Comment body required" });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "comment", body }));
+  }));
+
+  app.post("/api/tickets/:id/resolve", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    const now = new Date().toISOString();
+    await storage.updateTicket(ticket.id, { status: "resolved", resolvedAt: now, needsHost: false });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "resolved", body: "Resolved" }));
+  }));
+
+  app.post("/api/tickets/:id/close", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    await storage.updateTicket(ticket.id, { status: "closed" });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "closed", body: "Closed" }));
+  }));
+
+  app.post("/api/tickets/:id/escalate", asyncHandler(async (req, res) => {
+    const ticket = await storage.getTicket(Number(req.params.id));
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+    await storage.updateTicket(ticket.id, { status: "escalated", needsHost: true });
+    res.json(await storage.addTicketEvent({ ticketId: ticket.id, type: "escalated", body: "Manually escalated to host" }));
+  }));
+
+  app.post("/api/tickets/run-triage", asyncHandler(async (req, res) => {
+    res.json(await runTriage());
   }));
 
   app.post("/api/upload", upload.array("files", 20), asyncHandler(async (req, res) => {

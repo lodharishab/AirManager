@@ -21,6 +21,7 @@ import {
   Users,
   BellRing,
   IndianRupee,
+  LifeBuoy,
   Sun,
   Moon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const navItems = [
   { name: "Enquiries", path: "/enquiries", icon: HelpCircle },
   { name: "Follow-ups", path: "/follow-ups", icon: BellRing },
   { name: "AI Pricing", path: "/pricing", icon: IndianRupee },
+  { name: "Tickets", path: "/tickets", icon: LifeBuoy },
   { name: "Housekeeping", path: "/housekeeping", icon: ClipboardList },
   { name: "Expenses", path: "/expenses", icon: Receipt },
   { name: "Reviews", path: "/reviews", icon: Star },

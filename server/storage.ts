@@ -2,7 +2,7 @@ import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte, asc } from "dr
 import { db } from "./db";
 import {
   users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
-  followUpRules, followUps, priceRecommendations,
+  followUpRules, followUps, priceRecommendations, tickets, ticketEvents,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
@@ -23,6 +23,7 @@ import {
   type FollowUpRule, type InsertFollowUpRule,
   type FollowUp, type InsertFollowUp,
   type PriceRecommendation, type InsertPriceRecommendation,
+  type Ticket, type InsertTicket, type TicketEvent, type InsertTicketEvent,
 } from "@shared/schema";
 
 export interface FollowUpWithMeta extends FollowUp {
@@ -33,6 +34,10 @@ export interface FollowUpWithMeta extends FollowUp {
 export interface PriceRecommendationWithMeta extends PriceRecommendation {
   propertyName: string | null;
   propertyCurrency: string | null;
+}
+
+export interface TicketWithMeta extends Ticket {
+  propertyName: string | null;
 }
 
 export interface PaginatedResult<T> {
@@ -199,6 +204,17 @@ export interface IStorage {
   updatePriceRecommendation(id: number, updates: Partial<InsertPriceRecommendation>): Promise<PriceRecommendation | undefined>;
   getPendingPriceRecommendationCount(): Promise<number>;
   expirePendingRecommendationsForProperty(propertyId: number): Promise<void>;
+
+  getTickets(status?: string): Promise<TicketWithMeta[]>;
+  getTicket(id: number): Promise<Ticket | undefined>;
+  createTicket(ticket: InsertTicket): Promise<Ticket>;
+  updateTicket(id: number, updates: Partial<InsertTicket>): Promise<Ticket | undefined>;
+  getTicketStats(): Promise<{ open: number; escalated: number; resolved: number }>;
+  getTicketEvents(ticketId: number): Promise<TicketEvent[]>;
+  addTicketEvent(event: InsertTicketEvent): Promise<TicketEvent>;
+  findUntriagedEnquiries(): Promise<Enquiry[]>;
+  findUntriagedLowReviews(): Promise<Review[]>;
+  hasTicketForSource(channel: string, sourceRefId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1108,6 +1124,120 @@ export class DatabaseStorage implements IStorage {
       .update(priceRecommendations)
       .set({ status: "superseded", reviewedAt: new Date().toISOString() })
       .where(and(eq(priceRecommendations.propertyId, propertyId), eq(priceRecommendations.status, "pending")));
+  }
+
+  async getTickets(status?: string): Promise<TicketWithMeta[]> {
+    const base = db
+      .select({
+        id: tickets.id,
+        subject: tickets.subject,
+        description: tickets.description,
+        channel: tickets.channel,
+        priority: tickets.priority,
+        status: tickets.status,
+        propertyId: tickets.propertyId,
+        guestName: tickets.guestName,
+        sourceRefId: tickets.sourceRefId,
+        aiCategory: tickets.aiCategory,
+        needsHost: tickets.needsHost,
+        resolvedAt: tickets.resolvedAt,
+        createdAt: tickets.createdAt,
+        propertyName: properties.name,
+      })
+      .from(tickets)
+      .leftJoin(properties, eq(tickets.propertyId, properties.id));
+
+    const rows = status
+      ? await base.where(eq(tickets.status, status)).orderBy(desc(tickets.createdAt))
+      : await base.orderBy(desc(tickets.createdAt));
+    return rows;
+  }
+
+  async getTicket(id: number): Promise<Ticket | undefined> {
+    const [row] = await db.select().from(tickets).where(eq(tickets.id, id));
+    return row;
+  }
+
+  async createTicket(ticket: InsertTicket): Promise<Ticket> {
+    const [created] = await db
+      .insert(tickets)
+      .values({ ...ticket, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updateTicket(id: number, updates: Partial<InsertTicket>): Promise<Ticket | undefined> {
+    const [updated] = await db
+      .update(tickets)
+      .set(updates)
+      .where(eq(tickets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getTicketStats(): Promise<{ open: number; escalated: number; resolved: number }> {
+    const rows = await db
+      .select({ status: tickets.status, count: sql<number>`count(*)::int` })
+      .from(tickets)
+      .groupBy(tickets.status);
+    const byStatus = Object.fromEntries(rows.map((r) => [r.status, r.count]));
+    return {
+      open: byStatus["open"] || 0,
+      escalated: byStatus["escalated"] || 0,
+      resolved: byStatus["resolved"] || 0,
+    };
+  }
+
+  async getTicketEvents(ticketId: number): Promise<TicketEvent[]> {
+    return db
+      .select()
+      .from(ticketEvents)
+      .where(eq(ticketEvents.ticketId, ticketId))
+      .orderBy(asc(ticketEvents.createdAt));
+  }
+
+  async addTicketEvent(event: InsertTicketEvent): Promise<TicketEvent> {
+    const [created] = await db
+      .insert(ticketEvents)
+      .values({ ...event, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async findUntriagedEnquiries(): Promise<Enquiry[]> {
+    return db
+      .select()
+      .from(enquiries)
+      .where(
+        and(
+          eq(enquiries.status, "new"),
+          sql`NOT EXISTS (SELECT 1 FROM ${tickets} WHERE ${tickets.channel} = 'enquiry' AND ${tickets.sourceRefId} = ${enquiries.id})`,
+        ),
+      )
+      .orderBy(desc(enquiries.createdAt))
+      .limit(50);
+  }
+
+  async findUntriagedLowReviews(): Promise<Review[]> {
+    return db
+      .select()
+      .from(reviews)
+      .where(
+        and(
+          lte(reviews.rating, 3),
+          sql`NOT EXISTS (SELECT 1 FROM ${tickets} WHERE ${tickets.channel} = 'review' AND ${tickets.sourceRefId} = ${reviews.id})`,
+        ),
+      )
+      .limit(50);
+  }
+
+  async hasTicketForSource(channel: string, sourceRefId: number): Promise<boolean> {
+    const [row] = await db
+      .select({ id: tickets.id })
+      .from(tickets)
+      .where(and(eq(tickets.channel, channel), eq(tickets.sourceRefId, sourceRefId)))
+      .limit(1);
+    return Boolean(row);
   }
 }
 
