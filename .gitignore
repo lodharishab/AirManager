@@ -6,6 +6,10 @@ vite.config.ts.*
 *.tar.gz
 # secrets
 .env
+# .env only matches the exact name; rotations and edits leave copies like
+# .env.bak.20260908193647 sitting in the deploy directory as untracked files.
+.env.*
+!.env.test.example
 
 # user-uploaded media (lives on disk, not in git)
 uploads/
