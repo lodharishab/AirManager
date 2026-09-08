@@ -206,6 +206,10 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ message: "API route not found" });
+  });
+
   app.use((err: unknown, req: Request, res: Response, next: NextFunction): void => {
     const error = err as { status?: number; statusCode?: number; message?: string; stack?: string };
     const status = error.status || error.statusCode || 500;

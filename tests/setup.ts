@@ -1,14 +1,24 @@
 import { afterEach, afterAll } from "vitest";
 import { execFileSync } from "child_process";
+import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { parse } from "dotenv";
 import { sql } from "drizzle-orm";
 import pg from "pg";
 import type { Pool } from "pg";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type * as schema from "../shared/schema";
 
-const BASE_DB_URL = process.env.DATABASE_URL || "";
+let databaseUrl = process.env.DATABASE_URL || "";
+if (!databaseUrl) {
+  try {
+    databaseUrl = parse(readFileSync(".env")).DATABASE_URL || "";
+  } catch {
+    // The environment assertion below reports the actionable error.
+  }
+}
+const BASE_DB_URL = databaseUrl;
 const TEST_DB_NAME = `airmanager_test_${process.pid}`;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 

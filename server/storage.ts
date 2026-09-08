@@ -508,7 +508,7 @@ export class DatabaseStorage implements IStorage {
         lt(bookings.checkIn, checkOut),
         gt(bookings.checkOut, checkIn),
       ));
-    const wholePropertyBooked = overlapping.some((b) => b.roomId === null);
+    const wholePropertyBooked = bookingMode === "whole" && overlapping.length > 0;
     const bookedUnits = overlapping.reduce((sum, b) => sum + Math.max(b.roomCount ?? 1, 1), 0);
     let capacity: number | null = null;
     if (bookingMode === "room_based") {
@@ -837,9 +837,9 @@ export class DatabaseStorage implements IStorage {
     const data = await db
       .select({
         guest: guests,
-        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null)::int, 0)`,
-        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
-        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null)`,
+        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)::int, 0)`,
+        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
+        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)`,
       })
       .from(guests)
       .where(whereClause)
@@ -866,9 +866,9 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select({
         guest: guests,
-        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null)::int, 0)`,
-        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
-        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null)`,
+        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)::int, 0)`,
+        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
+        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)`,
       })
       .from(guests)
       .where(eq(guests.id, id));
@@ -902,12 +902,12 @@ export class DatabaseStorage implements IStorage {
     const data = await db
       .select({
         guest: guests,
-        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null)::int, 0)`,
-        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
-        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null)`,
+        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)::int, 0)`,
+        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
+        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)`,
       })
       .from(guests)
-      .orderBy(sql`(select count(*) from bookings where bookings.guest_id = ${guests.id} and bookings.deleted_at is null) desc`)
+      .orderBy(sql`(select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null) desc`)
       .limit(lim);
 
     return data.map(d => ({
@@ -952,7 +952,30 @@ export class DatabaseStorage implements IStorage {
   async getOccupancyStats(): Promise<{ averageOccupancy: number }> {
     const allProps = await db.select().from(properties).where(isNull(properties.deletedAt));
     if (allProps.length === 0) return { averageOccupancy: 0 };
-    const avg = Math.round(allProps.reduce((sum, p) => sum + p.occupancyRate, 0) / allProps.length);
+    const allBookings = await this.getAllBookings();
+    const allRooms = await this.getAllRooms();
+    const now = new Date();
+    const rangeStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const rangeEnd = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+    const rangeDays = Math.max(1, (rangeEnd - rangeStart) / 86400000);
+
+    const rates = allProps.map((property) => {
+      const roomBased = property.bookingMode === "room_based" || property.bookingMode === "rooms";
+      const capacity = roomBased
+        ? Math.max(1, allRooms.filter((room) => room.propertyId === property.id).reduce((sum, room) => sum + room.roomCount, 0))
+        : 1;
+      const occupiedUnitNights = allBookings
+        .filter((booking) => booking.propertyId === property.id && booking.status !== "cancelled")
+        .reduce((sum, booking) => {
+          const bookingStart = new Date(`${booking.checkIn}T00:00:00Z`).getTime();
+          const bookingEnd = new Date(`${booking.checkOut}T00:00:00Z`).getTime();
+          const overlapDays = Math.max(0, (Math.min(bookingEnd, rangeEnd) - Math.max(bookingStart, rangeStart)) / 86400000);
+          const units = roomBased ? Math.max(booking.roomCount ?? 1, 1) : 1;
+          return sum + overlapDays * units;
+        }, 0);
+      return Math.min(100, Math.round((occupiedUnitNights / (rangeDays * capacity)) * 100));
+    });
+    const avg = Math.round(rates.reduce((sum, rate) => sum + rate, 0) / rates.length);
     return { averageOccupancy: avg };
   }
 

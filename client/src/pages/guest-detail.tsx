@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@shared/currency";
 
 export default function GuestDetail() {
   const [, params] = useRoute("/guests/:id");
@@ -51,6 +52,7 @@ export default function GuestDetail() {
   });
 
   const properties = propertiesResult?.data || [];
+  const primaryCurrency = properties[0]?.currency || "USD";
 
   const startEditing = () => {
     if (!guest) return;
@@ -312,7 +314,7 @@ export default function GuestDetail() {
                     <DollarSign className="h-4 w-4 text-primary" />
                   </div>
                   <p data-testid="text-guest-total-spent" className="text-2xl font-bold">
-                    ${(guest.totalSpent || 0).toLocaleString()}
+                    {formatCurrency(guest.totalSpent || 0, primaryCurrency)}
                   </p>
                   <p className="text-xs text-muted-foreground">Total Spent</p>
                 </div>
@@ -356,7 +358,7 @@ export default function GuestDetail() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-sm">${booking.totalAmount.toLocaleString()}</p>
+                          <p className="font-semibold text-sm">{formatCurrency(booking.totalAmount, property?.currency)}</p>
                           <Badge
                             variant="outline"
                             className={`mt-1 text-[10px] uppercase tracking-wider ${

@@ -319,7 +319,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-sm">${(guest.totalSpent || 0).toLocaleString()}</p>
+                      <p className="font-semibold text-sm">{formatCurrency(guest.totalSpent || 0, primaryCurrency)}</p>
                       {guest.tags && guest.tags.length > 0 && (
                         <div className="flex gap-1 mt-1 justify-end">
                           {guest.tags.slice(0, 2).map(tag => (

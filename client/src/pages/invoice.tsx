@@ -1,11 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useProperty } from "@/lib/api";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import type { Booking, Property, Room } from "@shared/schema";
+import type { Booking, Room } from "@shared/schema";
 import { formatCurrency } from "@shared/currency";
 
 function generateInvoiceNumber(bookingId: number, checkInDate: string): string {
@@ -28,15 +29,7 @@ export default function Invoice() {
     enabled: !!bookingId,
   });
 
-  const { data: property, isLoading: propertyLoading } = useQuery<Property>({
-    queryKey: ["/api/properties-simple", booking?.propertyId],
-    queryFn: async () => {
-      const res = await fetch(`/api/properties`);
-      const properties: Property[] = await res.json();
-      return properties.find(p => p.id === booking!.propertyId)!;
-    },
-    enabled: !!booking?.propertyId,
-  });
+  const { data: property, isLoading: propertyLoading } = useProperty(booking?.propertyId);
 
   const { data: rooms } = useQuery<Room[]>({
     queryKey: ["/api/rooms"],
