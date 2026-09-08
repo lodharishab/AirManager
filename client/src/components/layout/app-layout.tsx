@@ -19,6 +19,7 @@ import {
   ClipboardList,
   BarChart2,
   Users,
+  BellRing,
   Sun,
   Moon,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const navItems = [
   { name: "Analytics", path: "/analytics", icon: BarChart2 },
   { name: "Messages", path: "/messages", icon: MessageSquare },
   { name: "Enquiries", path: "/enquiries", icon: HelpCircle },
+  { name: "Follow-ups", path: "/follow-ups", icon: BellRing },
   { name: "Housekeeping", path: "/housekeeping", icon: ClipboardList },
   { name: "Expenses", path: "/expenses", icon: Receipt },
   { name: "Reviews", path: "/reviews", icon: Star },

@@ -1,4 +1,4 @@
-import { beforeAll, afterEach, afterAll } from "vitest";
+import { afterEach, afterAll } from "vitest";
 import { execFileSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -12,16 +12,15 @@ const BASE_DB_URL = process.env.DATABASE_URL || "";
 const TEST_DB_NAME = `airmanager_test_${process.pid}`;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-let pool: Pool;
-let db: NodePgDatabase<typeof schema>;
-
 function assertTestEnvironment() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Refusing to run tests in production environment.");
   }
-  const dbUrl = BASE_DB_URL;
-  if (dbUrl.includes("prod") || dbUrl.includes("production")) {
+  if (BASE_DB_URL.includes("prod") || BASE_DB_URL.includes("production")) {
     throw new Error("Refusing to run tests against a production database URL.");
+  }
+  if (!BASE_DB_URL) {
+    throw new Error("DATABASE_URL must be set for integration tests.");
   }
 }
 
@@ -37,18 +36,23 @@ function adminUrl(): string {
   return u.toString();
 }
 
-async function recreateTestDatabase(admin: Pool) {
-  await admin.query(`DROP DATABASE IF EXISTS "${TEST_DB_NAME}" WITH (FORCE)`);
-  await admin.query(`CREATE DATABASE "${TEST_DB_NAME}"`);
-}
+assertTestEnvironment();
 
-async function pushSchema() {
-  execFileSync(path.join(REPO_ROOT, "node_modules/.bin/drizzle-kit"), ["push", "--force"], {
-    cwd: REPO_ROOT,
-    env: { ...process.env, DATABASE_URL: testDbUrl() },
-    stdio: "pipe",
-  });
-}
+// Provision at module top level: setup modules evaluate before test modules,
+// so the DB URL must be final before the test's static imports create the pool.
+const admin = new pg.Pool({ connectionString: adminUrl() });
+await admin.query(`DROP DATABASE IF EXISTS "${TEST_DB_NAME}" WITH (FORCE)`);
+await admin.query(`CREATE DATABASE "${TEST_DB_NAME}"`);
+await admin.end();
+
+process.env.DATABASE_URL = testDbUrl();
+const { pool, db } = await import("../server/db");
+
+execFileSync(path.join(REPO_ROOT, "node_modules/.bin/drizzle-kit"), ["push", "--force"], {
+  cwd: REPO_ROOT,
+  env: { ...process.env, DATABASE_URL: testDbUrl() },
+  stdio: "pipe",
+});
 
 async function publicTables(client: pg.PoolClient): Promise<string[]> {
   const res = await client.query<{ tablename: string }>(
@@ -57,30 +61,9 @@ async function publicTables(client: pg.PoolClient): Promise<string[]> {
   return res.rows.map((r) => r.tablename);
 }
 
-let tablesForCleanup: string[] = [];
-
-beforeAll(async () => {
-  assertTestEnvironment();
-
-  const admin = new pg.Pool({ connectionString: adminUrl() });
-  try {
-    await recreateTestDatabase(admin);
-  } finally {
-    await admin.end();
-  }
-
-  process.env.DATABASE_URL = testDbUrl();
-  ({ pool, db } = await import("../server/db"));
-
-  await pushSchema();
-
-  const client = await pool.connect();
-  try {
-    tablesForCleanup = await publicTables(client);
-  } finally {
-    client.release();
-  }
-});
+const client = await pool.connect();
+const tablesForCleanup = await publicTables(client);
+client.release();
 
 afterEach(async () => {
   if (tablesForCleanup.length > 0) {

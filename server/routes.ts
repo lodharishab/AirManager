@@ -42,6 +42,8 @@ import {
 } from "./email";
 import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectStorageUrl, getMimeType } from "./object-storage";
 import { getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
+import { runFollowUpSweep } from "./followups/engine";
+import { insertFollowUpRuleSchema } from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -412,6 +414,57 @@ export async function registerRoutes(
     const cfg = await getAiConfig();
     const result = await testAiConnection(cfg);
     res.json(result);
+  }));
+
+  app.get("/api/follow-up-rules", asyncHandler(async (req, res) => {
+    res.json(await storage.getFollowUpRules());
+  }));
+
+  app.post("/api/follow-up-rules", asyncHandler(async (req, res) => {
+    const parsed = insertFollowUpRuleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid follow-up rule", errors: parsed.error.flatten() });
+    }
+    res.json(await storage.createFollowUpRule(parsed.data));
+  }));
+
+  app.patch("/api/follow-up-rules/:id", asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertFollowUpRuleSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid rule update", errors: parsed.error.flatten() });
+    }
+    const rule = await storage.updateFollowUpRule(id, parsed.data);
+    if (!rule) return res.status(404).json({ message: "Rule not found" });
+    res.json(rule);
+  }));
+
+  app.delete("/api/follow-up-rules/:id", asyncHandler(async (req, res) => {
+    await storage.deleteFollowUpRule(Number(req.params.id));
+    res.json({ ok: true });
+  }));
+
+  app.get("/api/follow-ups", asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const allowed = ["pending", "sent", "failed", "cancelled"];
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status filter: ${status}` });
+    }
+    res.json(await storage.getFollowUps(status));
+  }));
+
+  app.get("/api/follow-ups/stats", asyncHandler(async (req, res) => {
+    res.json(await storage.getFollowUpStats());
+  }));
+
+  app.post("/api/follow-ups/run", asyncHandler(async (req, res) => {
+    res.json(await runFollowUpSweep());
+  }));
+
+  app.post("/api/follow-ups/:id/cancel", asyncHandler(async (req, res) => {
+    const followUp = await storage.updateFollowUp(Number(req.params.id), { status: "cancelled" });
+    if (!followUp) return res.status(404).json({ message: "Follow-up not found" });
+    res.json(followUp);
   }));
 
   app.post("/api/upload", upload.array("files", 20), asyncHandler(async (req, res) => {

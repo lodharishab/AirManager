@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, InsertBooking, Conversation, Message, RevenueData, GalleryImage, Expense, InsertExpense, Enquiry, Room, Review, HousekeepingTask, Notification, Guest, ExternalCalendar } from "@shared/schema";
+import type { Property, PropertyLink, Booking, InsertBooking, Conversation, Message, RevenueData, GalleryImage, Expense, InsertExpense, Enquiry, Room, Review, HousekeepingTask, Notification, Guest, ExternalCalendar, FollowUp, FollowUpRule } from "@shared/schema";
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -750,6 +750,95 @@ export function useDeleteGuest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guests"] });
+    },
+  });
+}
+
+export function useFollowUps() {
+  return useQuery<(FollowUp & { guestName: string | null; propertyName: string | null })[]>({
+    queryKey: ["/api/follow-ups"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/follow-ups");
+      return res.json();
+    },
+  });
+}
+
+export function useFollowUpStats() {
+  return useQuery<{ pending: number; sent: number; failed: number; sentToday: number }>({
+    queryKey: ["/api/follow-ups/stats"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/follow-ups/stats");
+      return res.json();
+    },
+  });
+}
+
+export function useRunFollowUps() {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/follow-ups/run", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-ups"] });
+    },
+  });
+}
+
+export function useCancelFollowUp() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/follow-ups/${id}/cancel`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-ups"] });
+    },
+  });
+}
+
+export function useFollowUpRules() {
+  return useQuery<FollowUpRule[]>({
+    queryKey: ["/api/follow-up-rules"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/follow-up-rules");
+      return res.json();
+    },
+  });
+}
+
+export function useCreateFollowUpRule() {
+  return useMutation({
+    mutationFn: async (data: Omit<FollowUpRule, "id" | "createdAt">) => {
+      const res = await apiRequest("POST", "/api/follow-up-rules", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-up-rules"] });
+    },
+  });
+}
+
+export function useUpdateFollowUpRule() {
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<FollowUpRule> & { id: number }) => {
+      const res = await apiRequest("PATCH", `/api/follow-up-rules/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-up-rules"] });
+    },
+  });
+}
+
+export function useDeleteFollowUpRule() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/follow-up-rules/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-up-rules"] });
     },
   });
 }

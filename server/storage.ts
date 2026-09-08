@@ -1,7 +1,8 @@
-import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte } from "drizzle-orm";
+import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte, asc } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
+  followUpRules, followUps,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
@@ -19,7 +20,14 @@ import {
   type UserPreferences, type InsertUserPreferences,
   type Guest, type InsertGuest,
   type ExternalCalendar, type InsertExternalCalendar,
+  type FollowUpRule, type InsertFollowUpRule,
+  type FollowUp, type InsertFollowUp,
 } from "@shared/schema";
+
+export interface FollowUpWithMeta extends FollowUp {
+  guestName: string | null;
+  propertyName: string | null;
+}
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -166,6 +174,19 @@ export interface IStorage {
   getSetting(key: string): Promise<string | undefined>;
   getSettings(prefix: string): Promise<Record<string, string>>;
   setSetting(key: string, value: string): Promise<void>;
+
+  getFollowUpRules(): Promise<FollowUpRule[]>;
+  getFollowUpRule(id: number): Promise<FollowUpRule | undefined>;
+  createFollowUpRule(rule: InsertFollowUpRule): Promise<FollowUpRule>;
+  updateFollowUpRule(id: number, updates: Partial<InsertFollowUpRule>): Promise<FollowUpRule | undefined>;
+  deleteFollowUpRule(id: number): Promise<void>;
+
+  getFollowUps(status?: string): Promise<FollowUpWithMeta[]>;
+  getFollowUp(id: number): Promise<FollowUp | undefined>;
+  createFollowUp(followUp: InsertFollowUp): Promise<FollowUp>;
+  updateFollowUp(id: number, updates: Partial<InsertFollowUp>): Promise<FollowUp | undefined>;
+  getFollowUpStats(): Promise<{ pending: number; sent: number; failed: number; sentToday: number }>;
+  findFollowUpCandidates(rule: FollowUpRule, limit?: number): Promise<Enquiry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -904,6 +925,120 @@ export class DatabaseStorage implements IStorage {
       .insert(appSettings)
       .values({ key, value, updatedAt: new Date() })
       .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+  }
+
+  async getFollowUpRules(): Promise<FollowUpRule[]> {
+    return db.select().from(followUpRules).orderBy(desc(followUpRules.createdAt));
+  }
+
+  async getFollowUpRule(id: number): Promise<FollowUpRule | undefined> {
+    const [rule] = await db.select().from(followUpRules).where(eq(followUpRules.id, id));
+    return rule;
+  }
+
+  async createFollowUpRule(rule: InsertFollowUpRule): Promise<FollowUpRule> {
+    const [created] = await db
+      .insert(followUpRules)
+      .values({ ...rule, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updateFollowUpRule(id: number, updates: Partial<InsertFollowUpRule>): Promise<FollowUpRule | undefined> {
+    const [updated] = await db
+      .update(followUpRules)
+      .set(updates)
+      .where(eq(followUpRules.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFollowUpRule(id: number): Promise<void> {
+    await db.delete(followUpRules).where(eq(followUpRules.id, id));
+  }
+
+  async getFollowUps(status?: string): Promise<FollowUpWithMeta[]> {
+    const base = db
+      .select({
+        id: followUps.id,
+        enquiryId: followUps.enquiryId,
+        ruleId: followUps.ruleId,
+        channel: followUps.channel,
+        recipient: followUps.recipient,
+        message: followUps.message,
+        status: followUps.status,
+        scheduledAt: followUps.scheduledAt,
+        sentAt: followUps.sentAt,
+        error: followUps.error,
+        createdAt: followUps.createdAt,
+        guestName: enquiries.guestName,
+        propertyName: properties.name,
+      })
+      .from(followUps)
+      .leftJoin(enquiries, eq(followUps.enquiryId, enquiries.id))
+      .leftJoin(properties, eq(enquiries.propertyId, properties.id));
+
+    const rows = status
+      ? await base.where(eq(followUps.status, status)).orderBy(desc(followUps.createdAt))
+      : await base.orderBy(desc(followUps.createdAt));
+    return rows;
+  }
+
+  async getFollowUp(id: number): Promise<FollowUp | undefined> {
+    const [row] = await db.select().from(followUps).where(eq(followUps.id, id));
+    return row;
+  }
+
+  async createFollowUp(followUp: InsertFollowUp): Promise<FollowUp> {
+    const [created] = await db
+      .insert(followUps)
+      .values({ ...followUp, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updateFollowUp(id: number, updates: Partial<InsertFollowUp>): Promise<FollowUp | undefined> {
+    const [updated] = await db
+      .update(followUps)
+      .set(updates)
+      .where(eq(followUps.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getFollowUpStats(): Promise<{ pending: number; sent: number; failed: number; sentToday: number }> {
+    const rows = await db
+      .select({ status: followUps.status, count: sql<number>`count(*)::int` })
+      .from(followUps)
+      .groupBy(followUps.status);
+    const byStatus = Object.fromEntries(rows.map((r) => [r.status, r.count]));
+    const today = new Date().toISOString().slice(0, 10);
+    const [sentToday] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(followUps)
+      .where(and(eq(followUps.status, "sent"), sql`${followUps.sentAt} >= ${today}`));
+    return {
+      pending: byStatus["pending"] || 0,
+      sent: byStatus["sent"] || 0,
+      failed: byStatus["failed"] || 0,
+      sentToday: sentToday?.count || 0,
+    };
+  }
+
+  async findFollowUpCandidates(rule: FollowUpRule, limit: number = 50): Promise<Enquiry[]> {
+    const cutoff = new Date(Date.now() - rule.delayHours * 3600_000).toISOString();
+    return db
+      .select()
+      .from(enquiries)
+      .where(
+        and(
+          eq(enquiries.status, "new"),
+          lte(enquiries.createdAt, cutoff),
+          sql`(SELECT COUNT(*) FROM ${followUps} WHERE ${followUps.enquiryId} = ${enquiries.id} AND ${followUps.status} <> 'cancelled') < ${rule.maxPerEnquiry}`,
+        ),
+      )
+      .orderBy(asc(enquiries.createdAt))
+      .limit(limit);
   }
 }
 

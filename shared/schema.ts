@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -234,7 +234,49 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// Created by connect-pg-simple at runtime; declared here so drizzle-kit push
+// recognizes it instead of offering it as a rename candidate for new tables.
+export const sessions = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
 export type AppSetting = typeof appSettings.$inferSelect;
+
+export const followUpRules = pgTable("follow_up_rules", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  trigger: text("trigger").notNull().default("enquiry_unanswered"), // enquiry_unanswered | booking_upcoming
+  delayHours: integer("delay_hours").notNull().default(24),
+  channel: text("channel").notNull().default("direct"), // direct | email | whatsapp | instagram
+  maxPerEnquiry: integer("max_per_enquiry").notNull().default(2),
+  promptTemplate: text("prompt_template"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type FollowUpRule = typeof followUpRules.$inferSelect;
+export type InsertFollowUpRule = typeof followUpRules.$inferInsert;
+export const insertFollowUpRuleSchema = createInsertSchema(followUpRules).omit({ id: true, createdAt: true });
+
+export const followUps = pgTable("follow_ups", {
+  id: serial("id").primaryKey(),
+  enquiryId: integer("enquiry_id").references(() => enquiries.id, { onDelete: "cascade" }),
+  ruleId: integer("rule_id").references(() => followUpRules.id, { onDelete: "set null" }),
+  channel: text("channel").notNull().default("direct"),
+  recipient: text("recipient"),
+  message: text("message"),
+  status: text("status").notNull().default("pending"), // pending | sent | failed | cancelled
+  scheduledAt: text("scheduled_at").notNull(),
+  sentAt: text("sent_at"),
+  error: text("error"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type FollowUp = typeof followUps.$inferSelect;
+export type InsertFollowUp = typeof followUps.$inferInsert;
+export const insertFollowUpSchema = createInsertSchema(followUps).omit({ id: true, createdAt: true });
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
