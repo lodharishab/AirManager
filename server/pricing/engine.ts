@@ -1,4 +1,5 @@
 import { logError } from "../logger";
+import { runTracked } from "../scheduler-runs";
 import { storage } from "../storage";
 import { aiChat, getAiConfig, type AiConfig } from "../ai/gateway";
 import type { Booking, PriceRecommendation, Property } from "@shared/schema";
@@ -164,7 +165,7 @@ export function startPricingScheduler(): NodeJS.Timeout {
       // Overlap guard: a slow AI run must not stack with the next day's run.
       if (!pricingRunInFlight) {
         pricingRunInFlight = true;
-        runPricingRecommendations()
+        runTracked("pricing_recommendations", runPricingRecommendations)
           .catch((e) => {
             logError("Pricing recommendation run failed:", e);
           })

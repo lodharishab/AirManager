@@ -45,6 +45,7 @@ import { aiChat, getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type
 import { runFollowUpSweep } from "./followups/engine";
 import { runPricingRecommendations, approvePriceRecommendation, rejectPriceRecommendation } from "./pricing/engine";
 import { runTriage } from "./tickets/engine";
+import { listSchedulerRuns } from "./scheduler-runs";
 import { insertFollowUpRuleSchema, insertTicketSchema } from "@shared/schema";
 
 const upload = multer({
@@ -388,6 +389,12 @@ export async function registerRoutes(
 
   // Protect all remaining /api routes
   app.use("/api", requireAuth);
+
+  // Background jobs run in-process with no external scheduler, so this is the
+  // only way an owner can tell whether a cycle actually ran.
+  app.get("/api/scheduler-runs", asyncHandler(async (_req, res) => {
+    res.json(await listSchedulerRuns());
+  }));
 
   app.get("/api/settings/ai", asyncHandler(async (req, res) => {
     const cfg = await getAiConfig();

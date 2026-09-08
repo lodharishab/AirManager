@@ -1,4 +1,5 @@
 import { logError } from "../logger";
+import { runTracked } from "../scheduler-runs";
 import { storage } from "../storage";
 import { aiChat, getAiConfig, type AiConfig } from "../ai/gateway";
 import type { Enquiry, Review } from "@shared/schema";
@@ -191,7 +192,7 @@ export function startTicketTriageScheduler(): NodeJS.Timeout {
     // Overlap guard: never run two sweeps concurrently (slow AI calls must not stack).
     if (sweepInFlight) return;
     sweepInFlight = true;
-    runTriage()
+    runTracked("ticket_triage", runTriage)
       .catch((e) => {
         logError("Ticket triage sweep failed:", e);
       })

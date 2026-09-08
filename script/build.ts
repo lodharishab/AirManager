@@ -44,7 +44,12 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  // server/index.ts imports ./vite only in the development branch, and
+  // server/vite.ts pulls in vite.config.ts, whose import.meta.dirname cannot be
+  // represented in CJS. Leaving it external keeps the dev tooling out of the
+  // production bundle entirely; production takes the serveStatic path and never
+  // resolves this specifier.
+  const externals = [...allDeps.filter((dep) => !allowlist.includes(dep)), "./vite"];
 
   await esbuild({
     entryPoints: ["server/index.ts"],

@@ -5,6 +5,22 @@ import { z } from "zod";
 
 export type BookingMode = "whole" | "room_based";
 
+/**
+ * One row per background job, rewritten in place on every run. Persisted
+ * because the schedulers' overlap guards are process-local booleans: after a
+ * restart nothing in memory shows whether a cycle was missed.
+ */
+export const schedulerRuns = pgTable("scheduler_runs", {
+  jobName: text("job_name").primaryKey(),
+  lastStartedAt: timestamp("last_started_at"),
+  lastFinishedAt: timestamp("last_finished_at"),
+  lastStatus: text("last_status"),
+  lastError: text("last_error"),
+  lastDurationMs: integer("last_duration_ms"),
+  runCount: integer("run_count").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),

@@ -553,6 +553,7 @@ export default function Housekeeping() {
                         <div className="flex justify-end gap-1">
                           <Button
                             data-testid={`button-edit-task-${task.id}`}
+                            aria-label={`Edit task: ${task.title}`}
                             variant="ghost"
                             size="icon"
                             className="h-11 w-11"
@@ -562,6 +563,7 @@ export default function Housekeeping() {
                           </Button>
                           <Button
                             data-testid={`button-delete-task-${task.id}`}
+                            aria-label={`Delete task: ${task.title}`}
                             variant="ghost"
                             size="icon"
                             className="h-11 w-11 text-destructive hover:text-destructive"
@@ -600,6 +602,7 @@ export default function Housekeeping() {
                     <div className="flex gap-1 shrink-0">
                       <Button
                         data-testid={`button-edit-task-mobile-${task.id}`}
+                        aria-label={`Edit task: ${task.title}`}
                         variant="ghost"
                         size="icon"
                         className="h-11 w-11"
@@ -609,6 +612,7 @@ export default function Housekeeping() {
                       </Button>
                       <Button
                         data-testid={`button-delete-task-mobile-${task.id}`}
+                        aria-label={`Delete task: ${task.title}`}
                         variant="ghost"
                         size="icon"
                         className="h-11 w-11 text-destructive"

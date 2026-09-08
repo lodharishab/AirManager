@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Pencil, Trash2, ImageIcon } from "lucide-react";
+import { isVideoUrl } from "@/lib/media";
 
 
 
@@ -20,8 +21,8 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
     return (
       <div className="text-center py-20 rounded-2xl border border-dashed border-border/50">
         <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-semibold">No images yet</h3>
-        <p className="text-muted-foreground mt-2">Add images manually or import from Google Drive.</p>
+        <h3 className="mt-4 text-lg font-semibold">No media yet</h3>
+        <p className="text-muted-foreground mt-2">Add images or videos manually, or import from Google Drive.</p>
       </div>
     );
   }
@@ -36,9 +37,10 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
           onClick={() => onOpenDetail(img)}
         >
           <div className="relative aspect-square overflow-hidden bg-muted">
-            {/\.(mp4|webm|mov|m4v)(\?|$)/i.test(img.imageUrl) ? (
+            {isVideoUrl(img.imageUrl) ? (
               <video
                 src={img.imageUrl}
+                aria-label={img.title || "Gallery video"}
                 muted
                 playsInline
                 className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
@@ -60,6 +62,7 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 bg-black/40 text-white hover:bg-black/60"
+                aria-label={`Edit ${img.title || "gallery item"}`}
                 onClick={(e) => { e.stopPropagation(); onOpenEdit(img); }}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -68,6 +71,7 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 bg-black/40 text-white hover:bg-red-500/80"
+                aria-label={`Delete ${img.title || "gallery item"}`}
                 onClick={(e) => { e.stopPropagation(); onDelete(img.id); }}
               >
                 <Trash2 className="h-3.5 w-3.5" />

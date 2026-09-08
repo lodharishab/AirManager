@@ -6,6 +6,7 @@ import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
 import { useUpdateGalleryImage } from "@/lib/api";
+import { isVideoUrl } from "@/lib/media";
 import { Star, Tag, X } from "lucide-react";
 
 
@@ -49,7 +50,7 @@ export function GalleryDetailDialog({ open, onOpenChange, image, onImageUpdate, 
       <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden">
         <div>
           <div className="relative aspect-video bg-muted">
-            {/\.(mp4|webm|mov|m4v)(\?|$)/i.test(image.imageUrl) ? (
+            {isVideoUrl(image.imageUrl) ? (
               <video
                 src={image.imageUrl}
                 controls

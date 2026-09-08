@@ -8,39 +8,49 @@ import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import AppLayout from "./components/layout/app-layout";
-import AIChatbot from "./components/ai-chatbot";
-import Dashboard from "./pages/dashboard";
-import Properties from "./pages/properties";
-import PropertyDetail from "./pages/property-detail";
-import Bookings from "./pages/bookings";
-import Messages from "./pages/messages";
-import Gallery from "./pages/gallery";
-import Expenses from "./pages/expenses";
-import Enquiries from "./pages/enquiries";
-import FollowUps from "./pages/followups";
-import Pricing from "./pages/pricing";
-import Tickets from "./pages/tickets";
-import Reviews from "./pages/reviews";
-import Housekeeping from "./pages/housekeeping";
-import CheckIns from "./pages/check-ins";
-import Settings from "./pages/settings";
 import Login from "./pages/login";
-import Invoice from "./pages/invoice";
-import CalendarPage from "./pages/calendar";
-import Analytics from "./pages/analytics";
-import Guests from "./pages/guests";
-import GuestDetail from "./pages/guest-detail";
 import { Loader2 } from "lucide-react";
+import { lazy, Suspense } from "react";
+
+// Route components load on demand. Importing all 20 pages eagerly put every
+// screen, chart and editor into the first download, so the initial bundle
+// carried the whole app before the dashboard could paint.
+const Dashboard = lazy(() => import("./pages/dashboard"));
+const Properties = lazy(() => import("./pages/properties"));
+const PropertyDetail = lazy(() => import("./pages/property-detail"));
+const Bookings = lazy(() => import("./pages/bookings"));
+const Messages = lazy(() => import("./pages/messages"));
+const Gallery = lazy(() => import("./pages/gallery"));
+const Expenses = lazy(() => import("./pages/expenses"));
+const Enquiries = lazy(() => import("./pages/enquiries"));
+const FollowUps = lazy(() => import("./pages/followups"));
+const Pricing = lazy(() => import("./pages/pricing"));
+const Tickets = lazy(() => import("./pages/tickets"));
+const Reviews = lazy(() => import("./pages/reviews"));
+const Housekeeping = lazy(() => import("./pages/housekeeping"));
+const CheckIns = lazy(() => import("./pages/check-ins"));
+const Settings = lazy(() => import("./pages/settings"));
+const Invoice = lazy(() => import("./pages/invoice"));
+const CalendarPage = lazy(() => import("./pages/calendar"));
+const Analytics = lazy(() => import("./pages/analytics"));
+const Guests = lazy(() => import("./pages/guests"));
+const GuestDetail = lazy(() => import("./pages/guest-detail"));
+const AIChatbot = lazy(() => import("./components/ai-chatbot"));
+
+
+function FullPageSpinner() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function ProtectedRouter() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <FullPageSpinner />;
   }
 
   if (!user) {
@@ -50,7 +60,8 @@ function ProtectedRouter() {
   return (
     <>
       <AppLayout>
-        <Switch>
+          <Suspense fallback={<FullPageSpinner />}>
+            <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
           <Route path="/properties/:id" component={PropertyDetail} />
@@ -72,9 +83,12 @@ function ProtectedRouter() {
           <Route path="/analytics" component={Analytics} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
-        </Switch>
+            </Switch>
+          </Suspense>
       </AppLayout>
-      <AIChatbot />
+      <Suspense fallback={null}>
+        <AIChatbot />
+      </Suspense>
     </>
   );
 }

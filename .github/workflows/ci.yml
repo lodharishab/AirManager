@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # tests/setup.ts creates a throwaway database per worker, so the role
+      # needs CREATEDB. Kept non-superuser to match the documented setup.
+      - name: Create test role
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres \
+            -c "CREATE ROLE airmanager_test LOGIN CREATEDB PASSWORD 'airmanager_test';"
+
+      - name: Write .env.test
+        run: |
+          {
+            echo "NODE_ENV=test"
+            echo "DATABASE_URL=postgresql://airmanager_test:airmanager_test@127.0.0.1:5432/postgres"
+            echo "SESSION_SECRET=ci-only-secret"
+          } > .env.test
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
