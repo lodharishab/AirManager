@@ -511,6 +511,7 @@ export default function Reviews() {
                   <div className="flex gap-1 shrink-0">
                     <Button
                       data-testid={`button-edit-review-${review.id}`}
+                      aria-label={`Edit review by ${review.guestName}`}
                       variant="ghost"
                       size="icon"
                       className="h-11 w-11"
@@ -520,6 +521,7 @@ export default function Reviews() {
                     </Button>
                     <Button
                       data-testid={`button-delete-review-${review.id}`}
+                      aria-label={`Delete review by ${review.guestName}`}
                       variant="ghost"
                       size="icon"
                       className="h-11 w-11 text-destructive"

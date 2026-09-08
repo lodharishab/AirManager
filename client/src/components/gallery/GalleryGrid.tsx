@@ -39,6 +39,7 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
             {/\.(mp4|webm|mov|m4v)(\?|$)/i.test(img.imageUrl) ? (
               <video
                 src={img.imageUrl}
+                aria-label={img.title || "Gallery video"}
                 muted
                 playsInline
                 className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
@@ -60,6 +61,7 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 bg-black/40 text-white hover:bg-black/60"
+                aria-label={`Edit ${img.title || "gallery item"}`}
                 onClick={(e) => { e.stopPropagation(); onOpenEdit(img); }}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -68,6 +70,7 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 bg-black/40 text-white hover:bg-red-500/80"
+                aria-label={`Delete ${img.title || "gallery item"}`}
                 onClick={(e) => { e.stopPropagation(); onDelete(img.id); }}
               >
                 <Trash2 className="h-3.5 w-3.5" />
