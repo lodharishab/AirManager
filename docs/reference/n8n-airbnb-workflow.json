@@ -11,7 +11,10 @@
       "name": "Meta Webhook Verify",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [176, 3664],
+      "position": [
+        176,
+        3664
+      ],
       "webhookId": "35460a16-fec0-4bde-bba1-05604fcc1219"
     },
     {
@@ -22,7 +25,10 @@
       "name": "Return Meta Challenge",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 3664]
+      "position": [
+        400,
+        3664
+      ]
     },
     {
       "parameters": {
@@ -34,7 +40,10 @@
       "name": "Meta Verify Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [624, 3664]
+      "position": [
+        624,
+        3664
+      ]
     },
     {
       "parameters": {
@@ -46,7 +55,10 @@
       "name": "WhatsApp Booking Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [624, 2032],
+      "position": [
+        624,
+        2032
+      ],
       "webhookId": "5120592c-951d-4382-b3bd-1d7c9cf7493e"
     },
     {
@@ -59,7 +71,10 @@
       "name": "Instagram Booking Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [624, 2224],
+      "position": [
+        624,
+        2224
+      ],
       "webhookId": "26482967-8e6d-4f9e-90ab-64e9566ebc43"
     },
     {
@@ -72,7 +87,10 @@
       "name": "Meta Ads Lead Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [176, 1840],
+      "position": [
+        176,
+        1840
+      ],
       "webhookId": "7f8bf8a0-fbf3-4077-997e-16a30be8ee23"
     },
     {
@@ -83,7 +101,10 @@
       "name": "Normalize WhatsApp Event",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [848, 2032]
+      "position": [
+        848,
+        2032
+      ]
     },
     {
       "parameters": {
@@ -93,7 +114,10 @@
       "name": "Normalize Instagram Event",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [848, 2224]
+      "position": [
+        848,
+        2224
+      ]
     },
     {
       "parameters": {
@@ -103,7 +127,10 @@
       "name": "Normalize Meta Ads Lead",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 1840]
+      "position": [
+        400,
+        1840
+      ]
     },
     {
       "parameters": {
@@ -111,8 +138,14 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "fields", "value": "field_data,created_time,ad_id,form_id" },
-            { "name": "access_token", "value": "={{$env.META_ACCESS_TOKEN||''}}" }
+            {
+              "name": "fields",
+              "value": "field_data,created_time,ad_id,form_id"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$env.META_ACCESS_TOKEN||''}}"
+            }
           ]
         },
         "options": {}
@@ -121,7 +154,10 @@
       "name": "Fetch Meta Lead Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [624, 1840]
+      "position": [
+        624,
+        1840
+      ]
     },
     {
       "parameters": {
@@ -131,7 +167,10 @@
       "name": "Prepare Meta Lead For Agent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [848, 1840]
+      "position": [
+        848,
+        1840
+      ]
     },
     {
       "parameters": {
@@ -141,7 +180,10 @@
       "name": "Build Unified Agent Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1072, 2032]
+      "position": [
+        1072,
+        2032
+      ]
     },
     {
       "parameters": {
@@ -159,7 +201,10 @@
       "name": "Sarvam AI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [1264, 2256],
+      "position": [
+        1264,
+        2256
+      ],
       "credentials": {
         "openAiApi": {
           "id": "xfW3VDxtVt7BwPea",
@@ -181,7 +226,10 @@
       "name": "Airbnb AI Booking Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
-      "position": [1672, 2032]
+      "position": [
+        1672,
+        2032
+      ]
     },
     {
       "parameters": {
@@ -193,7 +241,10 @@
       "name": "Guest Conversation Memory",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
-      "position": [1424, 2256]
+      "position": [
+        1424,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -203,17 +254,37 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.PMS_API_KEY||'')}" }
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "={'Bearer '+($env.PMS_API_KEY||'')}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "model",
         "placeholderDefinitions": {
           "values": [
-            { "name": "property_id", "description": "Optional property ID", "type": "string" },
-            { "name": "check_in", "description": "Check-in YYYY-MM-DD", "type": "string" },
-            { "name": "check_out", "description": "Check-out YYYY-MM-DD", "type": "string" },
-            { "name": "guests", "description": "Guest count", "type": "number" }
+            {
+              "name": "property_id",
+              "description": "Optional property ID",
+              "type": "string"
+            },
+            {
+              "name": "check_in",
+              "description": "Check-in YYYY-MM-DD",
+              "type": "string"
+            },
+            {
+              "name": "check_out",
+              "description": "Check-out YYYY-MM-DD",
+              "type": "string"
+            },
+            {
+              "name": "guests",
+              "description": "Guest count",
+              "type": "number"
+            }
           ]
         },
         "optimizeResponse": true,
@@ -223,7 +294,10 @@
       "name": "Tool - Check Availability",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1552, 2256]
+      "position": [
+        1552,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -233,18 +307,42 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.PMS_API_KEY||'')}" }
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "={'Bearer '+($env.PMS_API_KEY||'')}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "model",
         "placeholderDefinitions": {
           "values": [
-            { "name": "check_in", "description": "Check-in date", "type": "string" },
-            { "name": "check_out", "description": "Check-out date", "type": "string" },
-            { "name": "guests", "description": "Guest count", "type": "number" },
-            { "name": "budget", "description": "Budget", "type": "number" },
-            { "name": "preferences", "description": "Location/amenities", "type": "string" }
+            {
+              "name": "check_in",
+              "description": "Check-in date",
+              "type": "string"
+            },
+            {
+              "name": "check_out",
+              "description": "Check-out date",
+              "type": "string"
+            },
+            {
+              "name": "guests",
+              "description": "Guest count",
+              "type": "number"
+            },
+            {
+              "name": "budget",
+              "description": "Budget",
+              "type": "number"
+            },
+            {
+              "name": "preferences",
+              "description": "Location/amenities",
+              "type": "string"
+            }
           ]
         },
         "optimizeResponse": true,
@@ -254,7 +352,10 @@
       "name": "Tool - Property Search",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1680, 2256]
+      "position": [
+        1680,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -264,29 +365,60 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.PMS_API_KEY||'')}" }
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "={'Bearer '+($env.PMS_API_KEY||'')}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "model",
         "placeholderDefinitions": {
           "values": [
-            { "name": "property_id", "description": "Selected property", "type": "string" },
-            { "name": "check_in", "description": "Check-in", "type": "string" },
-            { "name": "check_out", "description": "Check-out", "type": "string" },
-            { "name": "guests", "description": "Guest count", "type": "number" },
-            { "name": "guest_name", "description": "Guest name", "type": "string" },
-            { "name": "guest_email", "description": "Guest email optional", "type": "string" }
+            {
+              "name": "property_id",
+              "description": "Selected property",
+              "type": "string"
+            },
+            {
+              "name": "check_in",
+              "description": "Check-in",
+              "type": "string"
+            },
+            {
+              "name": "check_out",
+              "description": "Check-out",
+              "type": "string"
+            },
+            {
+              "name": "guests",
+              "description": "Guest count",
+              "type": "number"
+            },
+            {
+              "name": "guest_name",
+              "description": "Guest name",
+              "type": "string"
+            },
+            {
+              "name": "guest_email",
+              "description": "Guest email optional",
+              "type": "string"
+            }
           ]
         },
         "optimizeResponse": true,
         "dataField": "data"
       },
-      "id": "d6a4dfb5-5b2c-4aff-b0fd-85c8b2973315",
+      "id": "d2cd198e-5472-4d19-bd70-e108e1938aac",
       "name": "Tool - Create Booking",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1808, 2256]
+      "position": [
+        1808,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -296,18 +428,42 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.CRM_API_KEY||'')}" }
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "={'Bearer '+($env.CRM_API_KEY||'')}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "model",
         "placeholderDefinitions": {
           "values": [
-            { "name": "channel", "description": "Source channel", "type": "string" },
-            { "name": "name", "description": "Guest name", "type": "string" },
-            { "name": "phone", "description": "Guest phone", "type": "string" },
-            { "name": "message", "description": "Latest message", "type": "string" },
-            { "name": "lead_stage", "description": "Lead stage", "type": "string" }
+            {
+              "name": "channel",
+              "description": "Source channel",
+              "type": "string"
+            },
+            {
+              "name": "name",
+              "description": "Guest name",
+              "type": "string"
+            },
+            {
+              "name": "phone",
+              "description": "Guest phone",
+              "type": "string"
+            },
+            {
+              "name": "message",
+              "description": "Latest message",
+              "type": "string"
+            },
+            {
+              "name": "lead_stage",
+              "description": "Lead stage",
+              "type": "string"
+            }
           ]
         },
         "optimizeResponse": true,
@@ -317,7 +473,10 @@
       "name": "Tool - Create CRM Lead",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2000, 2256]
+      "position": [
+        2000,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -327,17 +486,37 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.SUPPORT_API_KEY||'')}" }
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "={'Bearer '+($env.SUPPORT_API_KEY||'')}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "model",
         "placeholderDefinitions": {
           "values": [
-            { "name": "guest_id", "description": "Guest ID", "type": "string" },
-            { "name": "issue", "description": "Issue", "type": "string" },
-            { "name": "priority", "description": "Priority", "type": "string" },
-            { "name": "channel", "description": "Channel", "type": "string" }
+            {
+              "name": "guest_id",
+              "description": "Guest ID",
+              "type": "string"
+            },
+            {
+              "name": "issue",
+              "description": "Issue",
+              "type": "string"
+            },
+            {
+              "name": "priority",
+              "description": "Priority",
+              "type": "string"
+            },
+            {
+              "name": "channel",
+              "description": "Channel",
+              "type": "string"
+            }
           ]
         },
         "optimizeResponse": true,
@@ -347,7 +526,10 @@
       "name": "Tool - Create Support Ticket",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2128, 2256]
+      "position": [
+        2128,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -357,17 +539,37 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.SUPPORT_API_KEY||'')}" }
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "={'Bearer '+($env.SUPPORT_API_KEY||'')}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "model",
         "placeholderDefinitions": {
           "values": [
-            { "name": "guest_id", "description": "Guest ID", "type": "string" },
-            { "name": "reason", "description": "Reason", "type": "string" },
-            { "name": "priority", "description": "Priority", "type": "string" },
-            { "name": "summary", "description": "Summary", "type": "string" }
+            {
+              "name": "guest_id",
+              "description": "Guest ID",
+              "type": "string"
+            },
+            {
+              "name": "reason",
+              "description": "Reason",
+              "type": "string"
+            },
+            {
+              "name": "priority",
+              "description": "Priority",
+              "type": "string"
+            },
+            {
+              "name": "summary",
+              "description": "Summary",
+              "type": "string"
+            }
           ]
         },
         "optimizeResponse": true,
@@ -377,7 +579,10 @@
       "name": "Tool - Human Handoff",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2336, 2240]
+      "position": [
+        2336,
+        2240
+      ]
     },
     {
       "parameters": {
@@ -387,7 +592,10 @@
       "name": "Parse AI Agent Decision",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 2032]
+      "position": [
+        2400,
+        2032
+      ]
     },
     {
       "parameters": {
@@ -396,7 +604,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.CRM_API_KEY||''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.CRM_API_KEY||''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -409,14 +620,29 @@
       "name": "Log AI Lead Decision",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2624, 2032]
+      "position": [
+        2624,
+        2032
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
           "conditions": [
-            { "leftValue": "={{$json.channel}}", "rightValue": "whatsapp", "operator": { "type": "string", "operation": "equals" } }
+            {
+              "leftValue": "={{$json.channel}}",
+              "rightValue": "whatsapp",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
           ],
           "combinator": "and"
         },
@@ -426,7 +652,10 @@
       "name": "Is WhatsApp",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2848, 2032]
+      "position": [
+        2848,
+        2032
+      ]
     },
     {
       "parameters": {
@@ -435,8 +664,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -449,14 +684,29 @@
       "name": "Send WhatsApp AI Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3072, 1936]
+      "position": [
+        3072,
+        1936
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
           "conditions": [
-            { "leftValue": "={{$json.channel}}", "rightValue": "instagram", "operator": { "type": "string", "operation": "equals" } }
+            {
+              "leftValue": "={{$json.channel}}",
+              "rightValue": "instagram",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
           ],
           "combinator": "and"
         },
@@ -466,7 +716,10 @@
       "name": "Is Instagram",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3072, 2128]
+      "position": [
+        3072,
+        2128
+      ]
     },
     {
       "parameters": {
@@ -475,8 +728,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -489,7 +748,10 @@
       "name": "Send Instagram AI Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3296, 2032]
+      "position": [
+        3296,
+        2032
+      ]
     },
     {
       "parameters": {
@@ -499,14 +761,29 @@
       "name": "Prepare Meta Ads Lead Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3296, 2224]
+      "position": [
+        3296,
+        2224
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
           "conditions": [
-            { "leftValue": "={{$json.leadPhone}}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }
+            {
+              "leftValue": "={{$json.leadPhone}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
           ],
           "combinator": "and"
         },
@@ -516,7 +793,10 @@
       "name": "Meta Lead Has WhatsApp",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3520, 2224]
+      "position": [
+        3520,
+        2224
+      ]
     },
     {
       "parameters": {
@@ -525,8 +805,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -539,7 +825,10 @@
       "name": "Send Meta Lead WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3744, 2128]
+      "position": [
+        3744,
+        2128
+      ]
     },
     {
       "parameters": {
@@ -548,7 +837,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.STAFF_ALERT_API_KEY||''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.STAFF_ALERT_API_KEY||''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -561,7 +853,10 @@
       "name": "Notify Team For Meta Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3744, 2320]
+      "position": [
+        3744,
+        2320
+      ]
     },
     {
       "parameters": {
@@ -574,7 +869,10 @@
       "name": "Booking Lead Webhook1",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [176, 2544],
+      "position": [
+        176,
+        2544
+      ],
       "webhookId": "aa02aefa-a81e-41fe-849b-718c1f847fd6"
     },
     {
@@ -585,7 +883,10 @@
       "name": "Normalize Booking Lead1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 2544]
+      "position": [
+        400,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -594,7 +895,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.PMS_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.PMS_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -607,7 +911,10 @@
       "name": "PMS Availability Check1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [624, 2544]
+      "position": [
+        624,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -617,7 +924,10 @@
       "name": "Prepare Sarvam Sales Decision1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [848, 2544]
+      "position": [
+        848,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -626,7 +936,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+            {
+              "name": "api-subscription-key",
+              "value": "{{$env.SARVAM_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -639,7 +952,10 @@
       "name": "Sarvam Sales AI1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1072, 2544]
+      "position": [
+        1072,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -649,7 +965,10 @@
       "name": "Build Booking Response1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1296, 2544]
+      "position": [
+        1296,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -658,7 +977,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.MESSAGING_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.MESSAGING_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -671,7 +993,10 @@
       "name": "Send Guest Message1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1520, 2544]
+      "position": [
+        1520,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -683,7 +1008,10 @@
       "name": "Respond to Lead1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1744, 2544]
+      "position": [
+        1744,
+        2544
+      ]
     },
     {
       "parameters": {
@@ -696,7 +1024,10 @@
       "name": "Sarvam Voice Agent Event1",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [176, 2768],
+      "position": [
+        176,
+        2768
+      ],
       "webhookId": "39e3585d-bced-4751-8678-c62504168c24"
     },
     {
@@ -707,7 +1038,10 @@
       "name": "Normalize Voice Event1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 2768]
+      "position": [
+        400,
+        2768
+      ]
     },
     {
       "parameters": {
@@ -717,7 +1051,10 @@
       "name": "Voice Triage Prompt1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [624, 2768]
+      "position": [
+        624,
+        2768
+      ]
     },
     {
       "parameters": {
@@ -726,7 +1063,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+            {
+              "name": "api-subscription-key",
+              "value": "{{$env.SARVAM_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -739,7 +1079,10 @@
       "name": "Sarvam Conversation AI1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [848, 2768]
+      "position": [
+        848,
+        2768
+      ]
     },
     {
       "parameters": {
@@ -749,7 +1092,10 @@
       "name": "Build Voice Action1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1072, 2768]
+      "position": [
+        1072,
+        2768
+      ]
     },
     {
       "parameters": {
@@ -758,7 +1104,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.SUPPORT_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.SUPPORT_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -771,7 +1120,10 @@
       "name": "Create Support Ticket1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1296, 2768]
+      "position": [
+        1296,
+        2768
+      ]
     },
     {
       "parameters": {
@@ -780,7 +1132,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.SARVAM_AGENT_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.SARVAM_AGENT_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -793,7 +1148,10 @@
       "name": "Return Voice Response1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1520, 2768]
+      "position": [
+        1520,
+        2768
+      ]
     },
     {
       "parameters": {
@@ -805,13 +1163,19 @@
       "name": "Respond Voice Event1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1744, 2768]
+      "position": [
+        1744,
+        2768
+      ]
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "cronExpression", "expression": "0 */2 * * *" }
+            {
+              "field": "cronExpression",
+              "expression": "0 */2 * * *"
+            }
           ]
         }
       },
@@ -819,7 +1183,10 @@
       "name": "Follow-up Scheduler1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [176, 2992]
+      "position": [
+        176,
+        2992
+      ]
     },
     {
       "parameters": {
@@ -827,7 +1194,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.CRM_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.CRM_API_KEY || ''}}"
+            }
           ]
         },
         "options": {}
@@ -836,7 +1206,10 @@
       "name": "Fetch Follow-up Candidates1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 2992]
+      "position": [
+        400,
+        2992
+      ]
     },
     {
       "parameters": {
@@ -846,7 +1219,10 @@
       "name": "Build Follow-up Messages1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [624, 2992]
+      "position": [
+        624,
+        2992
+      ]
     },
     {
       "parameters": {
@@ -855,7 +1231,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+            {
+              "name": "api-subscription-key",
+              "value": "{{$env.SARVAM_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -868,7 +1247,10 @@
       "name": "Sarvam Follow-up Copy1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [848, 2992]
+      "position": [
+        848,
+        2992
+      ]
     },
     {
       "parameters": {
@@ -878,7 +1260,10 @@
       "name": "Prepare Follow-up Send1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1072, 2992]
+      "position": [
+        1072,
+        2992
+      ]
     },
     {
       "parameters": {
@@ -887,7 +1272,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.MESSAGING_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.MESSAGING_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -900,13 +1288,19 @@
       "name": "Send Follow-up1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1296, 2992]
+      "position": [
+        1296,
+        2992
+      ]
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "cronExpression", "expression": "15 5 * * *" }
+            {
+              "field": "cronExpression",
+              "expression": "15 5 * * *"
+            }
           ]
         }
       },
@@ -914,7 +1308,10 @@
       "name": "Pricing Scheduler1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [176, 3216]
+      "position": [
+        176,
+        3216
+      ]
     },
     {
       "parameters": {
@@ -922,7 +1319,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.PMS_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.PMS_API_KEY || ''}}"
+            }
           ]
         },
         "options": {}
@@ -931,7 +1331,10 @@
       "name": "Fetch Property Metrics1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 3216]
+      "position": [
+        400,
+        3216
+      ]
     },
     {
       "parameters": {
@@ -941,7 +1344,10 @@
       "name": "Build Pricing Prompt1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [624, 3216]
+      "position": [
+        624,
+        3216
+      ]
     },
     {
       "parameters": {
@@ -950,7 +1356,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+            {
+              "name": "api-subscription-key",
+              "value": "{{$env.SARVAM_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -963,7 +1372,10 @@
       "name": "Sarvam Revenue AI1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [848, 3216]
+      "position": [
+        848,
+        3216
+      ]
     },
     {
       "parameters": {
@@ -973,7 +1385,10 @@
       "name": "Prepare Pricing Approval1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1072, 3216]
+      "position": [
+        1072,
+        3216
+      ]
     },
     {
       "parameters": {
@@ -982,7 +1397,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.APPROVAL_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.APPROVAL_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -995,7 +1413,10 @@
       "name": "Send Pricing Approval1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1296, 3216]
+      "position": [
+        1296,
+        3216
+      ]
     },
     {
       "parameters": {
@@ -1008,7 +1429,10 @@
       "name": "Review Webhook1",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [176, 3440],
+      "position": [
+        176,
+        3440
+      ],
       "webhookId": "f509d0da-7f4f-4af6-86b7-264069c63f26"
     },
     {
@@ -1019,7 +1443,10 @@
       "name": "Normalize Review1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 3440]
+      "position": [
+        400,
+        3440
+      ]
     },
     {
       "parameters": {
@@ -1029,7 +1456,10 @@
       "name": "Build Reputation Prompt1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [624, 3440]
+      "position": [
+        624,
+        3440
+      ]
     },
     {
       "parameters": {
@@ -1038,7 +1468,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+            {
+              "name": "api-subscription-key",
+              "value": "{{$env.SARVAM_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -1051,7 +1484,10 @@
       "name": "Sarvam Review AI1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [848, 3440]
+      "position": [
+        848,
+        3440
+      ]
     },
     {
       "parameters": {
@@ -1061,7 +1497,10 @@
       "name": "Prepare Reputation Actions1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1072, 3440]
+      "position": [
+        1072,
+        3440
+      ]
     },
     {
       "parameters": {
@@ -1070,7 +1509,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.REVIEW_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.REVIEW_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -1083,7 +1525,10 @@
       "name": "Publish Review Reply1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1296, 3440]
+      "position": [
+        1296,
+        3440
+      ]
     },
     {
       "parameters": {
@@ -1092,7 +1537,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{$env.STAFF_ALERT_API_KEY || ''}}" }
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.STAFF_ALERT_API_KEY || ''}}"
+            }
           ]
         },
         "sendBody": true,
@@ -1105,7 +1553,10 @@
       "name": "Notify Staff1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1520, 3440]
+      "position": [
+        1520,
+        3440
+      ]
     },
     {
       "parameters": {
@@ -1117,83 +1568,662 @@
       "name": "Respond Review1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1744, 3440]
+      "position": [
+        1744,
+        3440
+      ]
     }
   ],
   "pinData": {},
   "connections": {
-    "Meta Webhook Verify": { "main": [[{ "node": "Return Meta Challenge", "type": "main", "index": 0 }]] },
-    "Return Meta Challenge": { "main": [[{ "node": "Meta Verify Response", "type": "main", "index": 0 }]] },
-    "WhatsApp Booking Webhook": { "main": [[{ "node": "Normalize WhatsApp Event", "type": "main", "index": 0 }]] },
-    "Instagram Booking Webhook": { "main": [[{ "node": "Normalize Instagram Event", "type": "main", "index": 0 }]] },
-    "Meta Ads Lead Webhook": { "main": [[{ "node": "Normalize Meta Ads Lead", "type": "main", "index": 0 }]] },
-    "Normalize Meta Ads Lead": { "main": [[{ "node": "Fetch Meta Lead Details", "type": "main", "index": 0 }]] },
-    "Fetch Meta Lead Details": { "main": [[{ "node": "Prepare Meta Lead For Agent", "type": "main", "index": 0 }]] },
-    "Normalize WhatsApp Event": { "main": [[{ "node": "Build Unified Agent Context", "type": "main", "index": 0 }]] },
-    "Normalize Instagram Event": { "main": [[{ "node": "Build Unified Agent Context", "type": "main", "index": 0 }]] },
-    "Prepare Meta Lead For Agent": { "main": [[{ "node": "Build Unified Agent Context", "type": "main", "index": 0 }]] },
-    "Sarvam AI Chat Model": { "ai_languageModel": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_languageModel", "index": 0 }]] },
-    "Guest Conversation Memory": { "ai_memory": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_memory", "index": 0 }]] },
-    "Build Unified Agent Context": { "main": [[{ "node": "Airbnb AI Booking Agent", "type": "main", "index": 0 }]] },
-    "Tool - Check Availability": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
-    "Tool - Property Search": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
-    "Tool - Create Booking": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
-    "Tool - Create CRM Lead": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
-    "Tool - Create Support Ticket": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
-    "Tool - Human Handoff": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
-    "Airbnb AI Booking Agent": { "main": [[{ "node": "Parse AI Agent Decision", "type": "main", "index": 0 }]] },
-    "Parse AI Agent Decision": { "main": [[{ "node": "Log AI Lead Decision", "type": "main", "index": 0 }]] },
-    "Log AI Lead Decision": { "main": [[{ "node": "Is WhatsApp", "type": "main", "index": 0 }]] },
+    "Meta Webhook Verify": {
+      "main": [
+        [
+          {
+            "node": "Return Meta Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Meta Challenge": {
+      "main": [
+        [
+          {
+            "node": "Meta Verify Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Booking Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize WhatsApp Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Booking Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Instagram Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta Ads Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Meta Ads Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Meta Ads Lead": {
+      "main": [
+        [
+          {
+            "node": "Fetch Meta Lead Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Meta Lead Details": {
+      "main": [
+        [
+          {
+            "node": "Prepare Meta Lead For Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize WhatsApp Event": {
+      "main": [
+        [
+          {
+            "node": "Build Unified Agent Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Instagram Event": {
+      "main": [
+        [
+          {
+            "node": "Build Unified Agent Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Meta Lead For Agent": {
+      "main": [
+        [
+          {
+            "node": "Build Unified Agent Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam AI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guest Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Unified Agent Context": {
+      "main": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Check Availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Property Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Create Booking": {
+      "ai_tool": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Create CRM Lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Create Support Ticket": {
+      "ai_tool": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Human Handoff": {
+      "ai_tool": [
+        [
+          {
+            "node": "Airbnb AI Booking Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airbnb AI Booking Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Agent Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Agent Decision": {
+      "main": [
+        [
+          {
+            "node": "Log AI Lead Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log AI Lead Decision": {
+      "main": [
+        [
+          {
+            "node": "Is WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Is WhatsApp": {
       "main": [
-        [{ "node": "Send WhatsApp AI Reply", "type": "main", "index": 0 }],
-        [{ "node": "Is Instagram", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Send WhatsApp AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Is Instagram": {
       "main": [
-        [{ "node": "Send Instagram AI Reply", "type": "main", "index": 0 }],
-        [{ "node": "Prepare Meta Ads Lead Response", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Send Instagram AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Meta Ads Lead Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Prepare Meta Ads Lead Response": { "main": [[{ "node": "Meta Lead Has WhatsApp", "type": "main", "index": 0 }]] },
+    "Prepare Meta Ads Lead Response": {
+      "main": [
+        [
+          {
+            "node": "Meta Lead Has WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Meta Lead Has WhatsApp": {
       "main": [
-        [{ "node": "Send Meta Lead WhatsApp", "type": "main", "index": 0 }],
-        [{ "node": "Notify Team For Meta Lead", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Send Meta Lead WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Team For Meta Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Booking Lead Webhook1": { "main": [[{ "node": "Normalize Booking Lead1", "type": "main", "index": 0 }]] },
-    "Normalize Booking Lead1": { "main": [[{ "node": "PMS Availability Check1", "type": "main", "index": 0 }]] },
-    "PMS Availability Check1": { "main": [[{ "node": "Prepare Sarvam Sales Decision1", "type": "main", "index": 0 }]] },
-    "Prepare Sarvam Sales Decision1": { "main": [[{ "node": "Sarvam Sales AI1", "type": "main", "index": 0 }]] },
-    "Sarvam Sales AI1": { "main": [[{ "node": "Build Booking Response1", "type": "main", "index": 0 }]] },
-    "Build Booking Response1": { "main": [[{ "node": "Send Guest Message1", "type": "main", "index": 0 }]] },
-    "Send Guest Message1": { "main": [[{ "node": "Respond to Lead1", "type": "main", "index": 0 }]] },
-    "Sarvam Voice Agent Event1": { "main": [[{ "node": "Normalize Voice Event1", "type": "main", "index": 0 }]] },
-    "Normalize Voice Event1": { "main": [[{ "node": "Voice Triage Prompt1", "type": "main", "index": 0 }]] },
-    "Voice Triage Prompt1": { "main": [[{ "node": "Sarvam Conversation AI1", "type": "main", "index": 0 }]] },
-    "Sarvam Conversation AI1": { "main": [[{ "node": "Build Voice Action1", "type": "main", "index": 0 }]] },
-    "Build Voice Action1": { "main": [[{ "node": "Create Support Ticket1", "type": "main", "index": 0 }]] },
-    "Create Support Ticket1": { "main": [[{ "node": "Return Voice Response1", "type": "main", "index": 0 }]] },
-    "Return Voice Response1": { "main": [[{ "node": "Respond Voice Event1", "type": "main", "index": 0 }]] },
-    "Follow-up Scheduler1": { "main": [[{ "node": "Fetch Follow-up Candidates1", "type": "main", "index": 0 }]] },
-    "Fetch Follow-up Candidates1": { "main": [[{ "node": "Build Follow-up Messages1", "type": "main", "index": 0 }]] },
-    "Build Follow-up Messages1": { "main": [[{ "node": "Sarvam Follow-up Copy1", "type": "main", "index": 0 }]] },
-    "Sarvam Follow-up Copy1": { "main": [[{ "node": "Prepare Follow-up Send1", "type": "main", "index": 0 }]] },
-    "Prepare Follow-up Send1": { "main": [[{ "node": "Send Follow-up1", "type": "main", "index": 0 }]] },
-    "Pricing Scheduler1": { "main": [[{ "node": "Fetch Property Metrics1", "type": "main", "index": 0 }]] },
-    "Fetch Property Metrics1": { "main": [[{ "node": "Build Pricing Prompt1", "type": "main", "index": 0 }]] },
-    "Build Pricing Prompt1": { "main": [[{ "node": "Sarvam Revenue AI1", "type": "main", "index": 0 }]] },
-    "Sarvam Revenue AI1": { "main": [[{ "node": "Prepare Pricing Approval1", "type": "main", "index": 0 }]] },
-    "Prepare Pricing Approval1": { "main": [[{ "node": "Send Pricing Approval1", "type": "main", "index": 0 }]] },
-    "Review Webhook1": { "main": [[{ "node": "Normalize Review1", "type": "main", "index": 0 }]] },
-    "Normalize Review1": { "main": [[{ "node": "Build Reputation Prompt1", "type": "main", "index": 0 }]] },
-    "Build Reputation Prompt1": { "main": [[{ "node": "Sarvam Review AI1", "type": "main", "index": 0 }]] },
-    "Sarvam Review AI1": { "main": [[{ "node": "Prepare Reputation Actions1", "type": "main", "index": 0 }]] },
-    "Prepare Reputation Actions1": { "main": [[{ "node": "Publish Review Reply1", "type": "main", "index": 0 }]] },
-    "Publish Review Reply1": { "main": [[{ "node": "Notify Staff1", "type": "main", "index": 0 }]] },
-    "Notify Staff1": { "main": [[{ "node": "Respond Review1", "type": "main", "index": 0 }]] }
+    "Booking Lead Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Booking Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Booking Lead1": {
+      "main": [
+        [
+          {
+            "node": "PMS Availability Check1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PMS Availability Check1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Sarvam Sales Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Sarvam Sales Decision1": {
+      "main": [
+        [
+          {
+            "node": "Sarvam Sales AI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam Sales AI1": {
+      "main": [
+        [
+          {
+            "node": "Build Booking Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Booking Response1": {
+      "main": [
+        [
+          {
+            "node": "Send Guest Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Guest Message1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam Voice Agent Event1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Voice Event1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Voice Event1": {
+      "main": [
+        [
+          {
+            "node": "Voice Triage Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Triage Prompt1": {
+      "main": [
+        [
+          {
+            "node": "Sarvam Conversation AI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam Conversation AI1": {
+      "main": [
+        [
+          {
+            "node": "Build Voice Action1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Voice Action1": {
+      "main": [
+        [
+          {
+            "node": "Create Support Ticket1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Support Ticket1": {
+      "main": [
+        [
+          {
+            "node": "Return Voice Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Voice Response1": {
+      "main": [
+        [
+          {
+            "node": "Respond Voice Event1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-up Scheduler1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Follow-up Candidates1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Follow-up Candidates1": {
+      "main": [
+        [
+          {
+            "node": "Build Follow-up Messages1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Follow-up Messages1": {
+      "main": [
+        [
+          {
+            "node": "Sarvam Follow-up Copy1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam Follow-up Copy1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Follow-up Send1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Follow-up Send1": {
+      "main": [
+        [
+          {
+            "node": "Send Follow-up1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pricing Scheduler1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Property Metrics1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Property Metrics1": {
+      "main": [
+        [
+          {
+            "node": "Build Pricing Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Pricing Prompt1": {
+      "main": [
+        [
+          {
+            "node": "Sarvam Revenue AI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam Revenue AI1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Pricing Approval1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Pricing Approval1": {
+      "main": [
+        [
+          {
+            "node": "Send Pricing Approval1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Review1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Review1": {
+      "main": [
+        [
+          {
+            "node": "Build Reputation Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reputation Prompt1": {
+      "main": [
+        [
+          {
+            "node": "Sarvam Review AI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sarvam Review AI1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reputation Actions1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reputation Actions1": {
+      "main": [
+        [
+          {
+            "node": "Publish Review Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Review Reply1": {
+      "main": [
+        [
+          {
+            "node": "Notify Staff1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Staff1": {
+      "main": [
+        [
+          {
+            "node": "Respond Review1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
   "settings": {

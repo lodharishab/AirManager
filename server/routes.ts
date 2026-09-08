@@ -77,6 +77,11 @@ function asyncHandler(fn: AsyncHandler) {
 }
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // API-key auth for the n8n dev harness / server-to-server callers
+  const apiKey = process.env.AIRMANAGER_API_KEY;
+  if (apiKey && req.headers["x-api-key"] === apiKey) {
+    return next();
+  }
   if (!req.session?.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -928,6 +933,29 @@ export async function registerRoutes(
     const booking = await storage.getBooking(Number(req.params.id));
     if (!booking) return res.status(404).json({ message: "Booking not found" });
     res.json(booking);
+  }));
+
+  // Availability check — used by the AI agent / n8n harness (Tool: Check Availability)
+  app.post("/api/availability", asyncHandler(async (req, res) => {
+    const { propertyId, checkIn, checkOut } = req.body ?? {};
+    if (!propertyId || !checkIn || !checkOut) {
+      return res.status(400).json({ message: "propertyId, checkIn and checkOut are required" });
+    }
+    const property = await storage.getProperty(Number(propertyId));
+    if (!property) return res.status(404).json({ message: "Property not found" });
+    if (String(checkIn) >= String(checkOut)) {
+      return res.status(400).json({ message: "checkOut must be after checkIn" });
+    }
+    const available = !(await storage.hasOverlappingBooking(property.id, String(checkIn), String(checkOut)));
+    res.json({
+      propertyId: property.id,
+      propertyName: property.name,
+      checkIn,
+      checkOut,
+      available,
+      nightlyRate: property.nightlyRate,
+      currency: property.currency || "USD",
+    });
   }));
 
   app.post("/api/bookings", asyncHandler(async (req, res) => {
