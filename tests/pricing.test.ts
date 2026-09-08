@@ -1,51 +1,10 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { DatabaseStorage } from "../server/storage";
+import { collectMetrics, parseAiRecommendation } from "../server/pricing/engine";
 import type { Booking, Property } from "@shared/schema";
 
 const storage = new DatabaseStorage();
 
-// Engine internals are exercised through collectMetrics-style behavior via the
-// exported scheduler-free helpers below.
-function collectMetrics(property: Pick<Property, "nightlyRate" | "occupancyRate">, bookings: Pick<Booking, "checkIn" | "checkOut" | "status">[]) {
-  const now = new Date();
-  const in30 = new Date(now.getTime() + 30 * 86_400_000);
-  const today = now.toISOString().slice(0, 10);
-  const horizon = in30.toISOString().slice(0, 10);
-
-  const upcoming = bookings.filter((b) => b.checkIn >= today && b.checkIn <= horizon && b.status !== "cancelled");
-  const upcomingNights30d = upcoming.reduce((sum, b) => {
-    const nights = Math.max(1, Math.round((Date.parse(b.checkOut) - Date.parse(b.checkIn)) / 86_400_000));
-    return sum + nights;
-  }, 0);
-  const nextArrival = upcoming.map((b) => b.checkIn).sort()[0];
-  const leadDaysToNextArrival = nextArrival
-    ? Math.max(0, Math.round((Date.parse(nextArrival) - now.getTime()) / 86_400_000))
-    : null;
-
-  return {
-    currentPrice: property.nightlyRate,
-    occupancyRate: property.occupancyRate,
-    upcomingBookings30d: upcoming.length,
-    upcomingNights30d,
-    leadDaysToNextArrival,
-  };
-}
-
-function parseAiRecommendation(raw: string) {
-  try {
-    const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(match ? match[0] : raw);
-    const price = Number(parsed.recommended_price);
-    return {
-      recommendedPrice: Number.isFinite(price) && price > 0 ? Math.round(price) : null,
-      reason: String(parsed.reason || "No reason provided"),
-      confidence: Math.min(100, Math.max(0, Math.round(Number(parsed.confidence) || 0))),
-      action: parsed.action === "recommend" ? "recommend" : "keep",
-    };
-  } catch {
-    return { recommendedPrice: null, reason: "AI parse failure", confidence: 0, action: "keep" };
-  }
-}
 
 function iso(daysFromNow: number): string {
   return new Date(Date.now() + daysFromNow * 86_400_000).toISOString().slice(0, 10);

@@ -6,7 +6,7 @@ const DEFAULT_PROMPT = `You are a vacation-rental revenue analyst. Recommend at 
 Only recommend a price if the data supports it; never invent competitor prices, events, or demand signals.
 Reply ONLY with JSON: {"recommended_price": number, "reason": string, "confidence": number (0-100), "action": "recommend" | "keep"}.`;
 
-interface PropertyMetrics {
+export interface PropertyMetrics {
   currentPrice: number;
   occupancyRate: number;
   upcomingBookings30d: number;
@@ -14,7 +14,10 @@ interface PropertyMetrics {
   leadDaysToNextArrival: number | null;
 }
 
-function collectMetrics(property: Property, bookings: Booking[]): PropertyMetrics {
+export function collectMetrics(
+  property: Pick<Property, "nightlyRate" | "occupancyRate">,
+  bookings: Pick<Booking, "checkIn" | "checkOut" | "status">[],
+): PropertyMetrics {
   const now = new Date();
   const in30 = new Date(now.getTime() + 30 * 86_400_000);
   const today = now.toISOString().slice(0, 10);
@@ -27,7 +30,7 @@ function collectMetrics(property: Property, bookings: Booking[]): PropertyMetric
   }, 0);
   const nextArrival = upcoming.map((b) => b.checkIn).sort()[0];
   const leadDaysToNextArrival = nextArrival
-    ? Math.max(0, Math.round((Date.parse(nextArrival) - now.getTime()) / 86_400_000))
+    ? Math.max(0, Math.round((Date.parse(nextArrival) - Date.parse(today)) / 86_400_000))
     : null;
 
   return {
@@ -39,7 +42,7 @@ function collectMetrics(property: Property, bookings: Booking[]): PropertyMetric
   };
 }
 
-function parseAiRecommendation(raw: string): {
+export function parseAiRecommendation(raw: string): {
   recommendedPrice: number | null;
   reason: string;
   confidence: number;
