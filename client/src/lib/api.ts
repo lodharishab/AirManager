@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, InsertBooking, Conversation, Message, RevenueData, GalleryImage, Expense, InsertExpense, Enquiry, Room, Review, HousekeepingTask, Notification, Guest, ExternalCalendar, FollowUp, FollowUpRule } from "@shared/schema";
+import type { Property, PropertyLink, Booking, InsertBooking, Conversation, Message, RevenueData, GalleryImage, Expense, InsertExpense, Enquiry, Room, Review, HousekeepingTask, Notification, Guest, ExternalCalendar, FollowUp, FollowUpRule, PriceRecommendation } from "@shared/schema";
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -839,6 +839,55 @@ export function useDeleteFollowUpRule() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/follow-up-rules"] });
+    },
+  });
+}
+
+export function usePriceRecommendations() {
+  return useQuery<
+    (PriceRecommendation & { propertyName: string | null; propertyCurrency: string | null })[]
+  >({
+    queryKey: ["/api/price-recommendations"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/price-recommendations");
+      return res.json();
+    },
+  });
+}
+
+export function useRunPricingRecommendations() {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/price-recommendations/run", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/price-recommendations"] });
+    },
+  });
+}
+
+export function useApprovePriceRecommendation() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/price-recommendations/${id}/approve`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/price-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+    },
+  });
+}
+
+export function useRejectPriceRecommendation() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/price-recommendations/${id}/reject`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/price-recommendations"] });
     },
   });
 }

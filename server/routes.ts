@@ -43,6 +43,7 @@ import {
 import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectStorageUrl, getMimeType } from "./object-storage";
 import { getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
 import { runFollowUpSweep } from "./followups/engine";
+import { runPricingRecommendations, approvePriceRecommendation, rejectPriceRecommendation } from "./pricing/engine";
 import { insertFollowUpRuleSchema } from "@shared/schema";
 
 const upload = multer({
@@ -465,6 +466,31 @@ export async function registerRoutes(
     const followUp = await storage.updateFollowUp(Number(req.params.id), { status: "cancelled" });
     if (!followUp) return res.status(404).json({ message: "Follow-up not found" });
     res.json(followUp);
+  }));
+
+  app.get("/api/price-recommendations", asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const allowed = ["pending", "approved", "rejected", "superseded"];
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status filter: ${status}` });
+    }
+    res.json(await storage.getPriceRecommendations(status));
+  }));
+
+  app.post("/api/price-recommendations/run", asyncHandler(async (req, res) => {
+    res.json(await runPricingRecommendations());
+  }));
+
+  app.post("/api/price-recommendations/:id/approve", asyncHandler(async (req, res) => {
+    const rec = await approvePriceRecommendation(Number(req.params.id));
+    if (!rec) return res.status(404).json({ message: "Recommendation not found" });
+    res.json(rec);
+  }));
+
+  app.post("/api/price-recommendations/:id/reject", asyncHandler(async (req, res) => {
+    const rec = await rejectPriceRecommendation(Number(req.params.id));
+    if (!rec) return res.status(404).json({ message: "Recommendation not found" });
+    res.json(rec);
   }));
 
   app.post("/api/upload", upload.array("files", 20), asyncHandler(async (req, res) => {

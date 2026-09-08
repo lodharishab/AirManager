@@ -278,6 +278,23 @@ export type FollowUp = typeof followUps.$inferSelect;
 export type InsertFollowUp = typeof followUps.$inferInsert;
 export const insertFollowUpSchema = createInsertSchema(followUps).omit({ id: true, createdAt: true });
 
+export const priceRecommendations = pgTable("price_recommendations", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(),
+  currentPrice: integer("current_price").notNull(),
+  recommendedPrice: integer("recommended_price").notNull(),
+  reason: text("reason").notNull(),
+  confidence: integer("confidence").notNull().default(0), // 0-100
+  status: text("status").notNull().default("pending"), // pending | approved | rejected | superseded
+  reviewedAt: text("reviewed_at"),
+  metricsSnapshot: text("metrics_snapshot"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export type PriceRecommendation = typeof priceRecommendations.$inferSelect;
+export type InsertPriceRecommendation = typeof priceRecommendations.$inferInsert;
+export const insertPriceRecommendationSchema = createInsertSchema(priceRecommendations).omit({ id: true, createdAt: true });
+
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 

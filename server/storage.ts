@@ -2,7 +2,7 @@ import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte, asc } from "dr
 import { db } from "./db";
 import {
   users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
-  followUpRules, followUps,
+  followUpRules, followUps, priceRecommendations,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
@@ -22,11 +22,17 @@ import {
   type ExternalCalendar, type InsertExternalCalendar,
   type FollowUpRule, type InsertFollowUpRule,
   type FollowUp, type InsertFollowUp,
+  type PriceRecommendation, type InsertPriceRecommendation,
 } from "@shared/schema";
 
 export interface FollowUpWithMeta extends FollowUp {
   guestName: string | null;
   propertyName: string | null;
+}
+
+export interface PriceRecommendationWithMeta extends PriceRecommendation {
+  propertyName: string | null;
+  propertyCurrency: string | null;
 }
 
 export interface PaginatedResult<T> {
@@ -187,6 +193,12 @@ export interface IStorage {
   updateFollowUp(id: number, updates: Partial<InsertFollowUp>): Promise<FollowUp | undefined>;
   getFollowUpStats(): Promise<{ pending: number; sent: number; failed: number; sentToday: number }>;
   findFollowUpCandidates(rule: FollowUpRule, limit?: number): Promise<Enquiry[]>;
+
+  getPriceRecommendations(status?: string): Promise<PriceRecommendationWithMeta[]>;
+  createPriceRecommendation(rec: InsertPriceRecommendation): Promise<PriceRecommendation>;
+  updatePriceRecommendation(id: number, updates: Partial<InsertPriceRecommendation>): Promise<PriceRecommendation | undefined>;
+  getPendingPriceRecommendationCount(): Promise<number>;
+  expirePendingRecommendationsForProperty(propertyId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1039,6 +1051,63 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(asc(enquiries.createdAt))
       .limit(limit);
+  }
+
+  async getPriceRecommendations(status?: string): Promise<PriceRecommendationWithMeta[]> {
+    const base = db
+      .select({
+        id: priceRecommendations.id,
+        propertyId: priceRecommendations.propertyId,
+        currentPrice: priceRecommendations.currentPrice,
+        recommendedPrice: priceRecommendations.recommendedPrice,
+        reason: priceRecommendations.reason,
+        confidence: priceRecommendations.confidence,
+        status: priceRecommendations.status,
+        reviewedAt: priceRecommendations.reviewedAt,
+        metricsSnapshot: priceRecommendations.metricsSnapshot,
+        createdAt: priceRecommendations.createdAt,
+        propertyName: properties.name,
+        propertyCurrency: properties.currency,
+      })
+      .from(priceRecommendations)
+      .leftJoin(properties, eq(priceRecommendations.propertyId, properties.id));
+
+    const rows = status
+      ? await base.where(eq(priceRecommendations.status, status)).orderBy(desc(priceRecommendations.createdAt))
+      : await base.orderBy(desc(priceRecommendations.createdAt));
+    return rows;
+  }
+
+  async createPriceRecommendation(rec: InsertPriceRecommendation): Promise<PriceRecommendation> {
+    const [created] = await db
+      .insert(priceRecommendations)
+      .values({ ...rec, createdAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async updatePriceRecommendation(id: number, updates: Partial<InsertPriceRecommendation>): Promise<PriceRecommendation | undefined> {
+    const [updated] = await db
+      .update(priceRecommendations)
+      .set(updates)
+      .where(eq(priceRecommendations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPendingPriceRecommendationCount(): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(priceRecommendations)
+      .where(eq(priceRecommendations.status, "pending"));
+    return row?.count || 0;
+  }
+
+  async expirePendingRecommendationsForProperty(propertyId: number): Promise<void> {
+    await db
+      .update(priceRecommendations)
+      .set({ status: "superseded", reviewedAt: new Date().toISOString() })
+      .where(and(eq(priceRecommendations.propertyId, propertyId), eq(priceRecommendations.status, "pending")));
   }
 }
 

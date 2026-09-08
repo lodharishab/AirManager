@@ -20,6 +20,7 @@ import {
   BarChart2,
   Users,
   BellRing,
+  IndianRupee,
   Sun,
   Moon,
 } from "lucide-react";
@@ -44,6 +45,7 @@ const navItems = [
   { name: "Messages", path: "/messages", icon: MessageSquare },
   { name: "Enquiries", path: "/enquiries", icon: HelpCircle },
   { name: "Follow-ups", path: "/follow-ups", icon: BellRing },
+  { name: "AI Pricing", path: "/pricing", icon: IndianRupee },
   { name: "Housekeeping", path: "/housekeeping", icon: ClipboardList },
   { name: "Expenses", path: "/expenses", icon: Receipt },
   { name: "Reviews", path: "/reviews", icon: Star },

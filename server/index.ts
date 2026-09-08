@@ -9,6 +9,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { config } from "./config";
 import { startFollowUpScheduler } from "./followups/engine";
+import { startPricingScheduler } from "./pricing/engine";
 
 declare module "express-session" {
   interface SessionData {
@@ -220,6 +221,7 @@ app.use((req, res, next) => {
     () => {
       log(`serving on port ${config.port}`);
       startFollowUpScheduler();
+      startPricingScheduler();
     },
   );
 })();
