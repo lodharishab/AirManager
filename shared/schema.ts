@@ -228,6 +228,14 @@ export const userPreferences = pgTable("user_preferences", {
 
 export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({ id: true });
 
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
+
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 

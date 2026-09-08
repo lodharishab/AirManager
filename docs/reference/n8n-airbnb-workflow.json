@@ -1,0 +1,1210 @@
+{
+  "name": "Airbnb AI Automation Suite - Omnichannel AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "airbnb-meta",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f4a70d06-b5f9-430d-9567-45ff7a8b2364",
+      "name": "Meta Webhook Verify",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [176, 3664],
+      "webhookId": "35460a16-fec0-4bde-bba1-05604fcc1219"
+    },
+    {
+      "parameters": {
+        "jsCode": "const q=$json.query||$json; const expected=$env.META_VERIFY_TOKEN||''; if(q['hub.mode']==='subscribe'&&q['hub.verify_token']&&q['hub.verify_token']===expected){return [{json:{challenge:String(q['hub.challenge']||'')}}]}; throw new Error('Meta webhook verification failed');"
+      },
+      "id": "991b5fb9-7cdb-4654-a401-a27dd3c590bf",
+      "name": "Return Meta Challenge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 3664]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.challenge||''}}",
+        "options": {}
+      },
+      "id": "c27692a9-4b90-4d6c-ac4a-a8483ae65749",
+      "name": "Meta Verify Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [624, 3664]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "airbnb-whatsapp",
+        "options": {}
+      },
+      "id": "c7acd7f6-a627-4308-ac23-e4ad2b65124b",
+      "name": "WhatsApp Booking Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [624, 2032],
+      "webhookId": "5120592c-951d-4382-b3bd-1d7c9cf7493e"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "airbnb-instagram",
+        "options": {}
+      },
+      "id": "7da3209e-aa33-4451-ac01-d8e705d47bf3",
+      "name": "Instagram Booking Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [624, 2224],
+      "webhookId": "26482967-8e6d-4f9e-90ab-64e9566ebc43"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "airbnb-meta",
+        "options": {}
+      },
+      "id": "21faf0a1-e1f1-49f0-a553-9d89a7659c5d",
+      "name": "Meta Ads Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [176, 1840],
+      "webhookId": "7f8bf8a0-fbf3-4077-997e-16a30be8ee23"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b=$json.body||$json,v=b.entry?.[0]?.changes?.[0]?.value||{},m=v.messages?.[0]||{},c=v.contacts?.[0]||{}; const t=m.text?.body||m.button?.text||m.interactive?.button_reply?.title||m.interactive?.list_reply?.title||''; return [{json:{channel:'whatsapp',senderId:m.from||c.wa_id||'',recipientId:v.metadata?.phone_number_id||'',messageId:m.id||'',text:String(t||''),sessionId:`whatsapp:${m.from||c.wa_id||''}`,raw:b}}];"
+      },
+      "id": "973072c5-ca9a-4201-8b24-5217c688f49c",
+      "name": "Normalize WhatsApp Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [848, 2032]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b=$json.body||$json,e=b.entry?.[0]||{},m=e.messaging?.[0]||b.messaging?.[0]||{},msg=m.message||{}; return [{json:{channel:'instagram',senderId:m.sender?.id||'',recipientId:m.recipient?.id||'',messageId:msg.mid||'',text:String(msg.text||msg.quick_reply?.payload||''),sessionId:`instagram:${m.sender?.id||''}`,raw:b}}];"
+      },
+      "id": "62e8fd83-859b-41f9-a3c0-bf8834f0d976",
+      "name": "Normalize Instagram Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [848, 2224]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b=$json.body||$json,v=b.entry?.[0]?.changes?.[0]?.value||{},id=v.leadgen_id||b.leadgen_id||''; return [{json:{channel:'meta_ads',leadgenId:id,pageId:v.page_id||b.page_id||'',formId:v.form_id||b.form_id||'',sessionId:`meta_ads:${id}`,text:'New Meta Ads lead. Retrieve lead details and qualify for a property booking.',raw:b}}];"
+      },
+      "id": "af43515a-a90c-4258-afa1-0d30d6dacd1d",
+      "name": "Normalize Meta Ads Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 1840]
+    },
+    {
+      "parameters": {
+        "url": "={{'https://graph.facebook.com/v23.0/'+$json.leadgenId}}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "field_data,created_time,ad_id,form_id" },
+            { "name": "access_token", "value": "={{$env.META_ACCESS_TOKEN||''}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "106c9337-dc91-4077-9b10-d41a9650cd01",
+      "name": "Fetch Meta Lead Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [624, 1840]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base=$('Normalize Meta Ads Lead').first().json,d=$json,fields={}; for(const f of (d.field_data||[]))fields[f.name]=(f.values||[])[0]??''; return [{json:{...base,lead:{...fields,created_time:d.created_time||'',ad_id:d.ad_id||''},text:`Meta Ads lead details: ${JSON.stringify(fields)}. Qualify this guest and move toward a reservation.`}}];"
+      },
+      "id": "0b1a3d1c-9ee0-4ff0-92d5-b454140d4bf8",
+      "name": "Prepare Meta Lead For Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [848, 1840]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j=$json,c={channel:j.channel,senderId:j.senderId||'',recipientId:j.recipientId||'',sessionId:j.sessionId||'',messageId:j.messageId||'',lead:j.lead||null,userMessage:String(j.text||'').trim()}; return [{json:{...j,agentPrompt:`You are the Airbnb Booking AI Agent. Act as sales, concierge and support. Use tools for live data/actions; never invent availability, prices, booking IDs, policies or amenities. Convert qualified enquiries into confirmed bookings. Channel=${j.channel}. Guest context=${JSON.stringify(c)}. Return ONLY valid JSON with keys intent,reply,booking_status,lead_stage,needs_human,property_id,check_in,check_out,guests,booking_id. booking_status=enquiry|availability_checked|awaiting_payment|booked|support|cancelled. For booking: check availability first; create booking only after explicit confirmation and complete required details. Use only payment links returned by tools. Escalate refunds, emergencies, policy exceptions, uncertainty.`}}];"
+      },
+      "id": "55688e5a-2603-42d0-80d6-7603e271b5ee",
+      "name": "Build Unified Agent Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1072, 2032]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "sarvam-105b"
+        },
+        "options": {
+          "maxTokens": 900,
+          "temperature": 0.2
+        }
+      },
+      "id": "12000ca8-132e-40a7-b52d-b1992ba67f6d",
+      "name": "Sarvam AI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [1264, 2256],
+      "credentials": {
+        "openAiApi": {
+          "id": "xfW3VDxtVt7BwPea",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.agentPrompt}}",
+        "options": {
+          "systemMessage": "You are the central Airbnb AI Booking Agent. You understand Hindi, Hinglish, English and other Indian languages. Use tools instead of guessing. Never expose internal APIs. Always return the JSON schema requested by the user prompt.",
+          "maxIterations": 8,
+          "returnIntermediateSteps": false
+        }
+      },
+      "id": "827706f9-2bbe-4c92-9991-b625f24bf551",
+      "name": "Airbnb AI Booking Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [1672, 2032]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{$json.sessionId||('guest:'+($json.senderId||$json.leadgenId||'unknown'))}}",
+        "contextWindowLength": 12
+      },
+      "id": "74ec5687-bcbc-420b-bf09-18cc6bf0e42e",
+      "name": "Guest Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [1424, 2256]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Check live availability and price before promising anything.",
+        "method": "POST",
+        "url": "={{$env.PMS_AVAILABILITY_URL||'https://example.invalid/pms/availability'}}",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.PMS_API_KEY||'')}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "model",
+        "placeholderDefinitions": {
+          "values": [
+            { "name": "property_id", "description": "Optional property ID", "type": "string" },
+            { "name": "check_in", "description": "Check-in YYYY-MM-DD", "type": "string" },
+            { "name": "check_out", "description": "Check-out YYYY-MM-DD", "type": "string" },
+            { "name": "guests", "description": "Guest count", "type": "number" }
+          ]
+        },
+        "optimizeResponse": true,
+        "dataField": "data"
+      },
+      "id": "3d0f6960-b6ba-4f76-acf5-9dfb0cdcc5a2",
+      "name": "Tool - Check Availability",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1552, 2256]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search matching properties by dates, guests, budget and preferences.",
+        "method": "POST",
+        "url": "={{$env.PMS_PROPERTY_SEARCH_URL||'https://example.invalid/pms/properties/search'}}",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.PMS_API_KEY||'')}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "model",
+        "placeholderDefinitions": {
+          "values": [
+            { "name": "check_in", "description": "Check-in date", "type": "string" },
+            { "name": "check_out", "description": "Check-out date", "type": "string" },
+            { "name": "guests", "description": "Guest count", "type": "number" },
+            { "name": "budget", "description": "Budget", "type": "number" },
+            { "name": "preferences", "description": "Location/amenities", "type": "string" }
+          ]
+        },
+        "optimizeResponse": true,
+        "dataField": "data"
+      },
+      "id": "d6a4dfb5-5b2c-4aff-b0fd-85c8b2973315",
+      "name": "Tool - Property Search",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1680, 2256]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Create a reservation only after explicit guest confirmation and complete details.",
+        "method": "POST",
+        "url": "={{$env.PMS_BOOKING_URL||'https://example.invalid/pms/bookings'}}",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.PMS_API_KEY||'')}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "model",
+        "placeholderDefinitions": {
+          "values": [
+            { "name": "property_id", "description": "Selected property", "type": "string" },
+            { "name": "check_in", "description": "Check-in", "type": "string" },
+            { "name": "check_out", "description": "Check-out", "type": "string" },
+            { "name": "guests", "description": "Guest count", "type": "number" },
+            { "name": "guest_name", "description": "Guest name", "type": "string" },
+            { "name": "guest_email", "description": "Guest email optional", "type": "string" }
+          ]
+        },
+        "optimizeResponse": true,
+        "dataField": "data"
+      },
+      "id": "d6a4dfb5-5b2c-4aff-b0fd-85c8b2973315",
+      "name": "Tool - Create Booking",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1808, 2256]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Create/update the CRM lead record for this guest conversation.",
+        "method": "POST",
+        "url": "={{$env.CRM_LEAD_URL||'https://example.invalid/crm/leads'}}",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.CRM_API_KEY||'')}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "model",
+        "placeholderDefinitions": {
+          "values": [
+            { "name": "channel", "description": "Source channel", "type": "string" },
+            { "name": "name", "description": "Guest name", "type": "string" },
+            { "name": "phone", "description": "Guest phone", "type": "string" },
+            { "name": "message", "description": "Latest message", "type": "string" },
+            { "name": "lead_stage", "description": "Lead stage", "type": "string" }
+          ]
+        },
+        "optimizeResponse": true,
+        "dataField": "data"
+      },
+      "id": "ae2829ee-0442-4c78-a95f-07e5c5c3589f",
+      "name": "Tool - Create CRM Lead",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [2000, 2256]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Create an operational support ticket for issues needing staff.",
+        "method": "POST",
+        "url": "={{$env.SUPPORT_TICKET_URL||'https://example.invalid/support/tickets'}}",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.SUPPORT_API_KEY||'')}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "model",
+        "placeholderDefinitions": {
+          "values": [
+            { "name": "guest_id", "description": "Guest ID", "type": "string" },
+            { "name": "issue", "description": "Issue", "type": "string" },
+            { "name": "priority", "description": "Priority", "type": "string" },
+            { "name": "channel", "description": "Channel", "type": "string" }
+          ]
+        },
+        "optimizeResponse": true,
+        "dataField": "data"
+      },
+      "id": "c3c5c8ef-f8c5-41b0-8118-ddd8045d3235",
+      "name": "Tool - Create Support Ticket",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [2128, 2256]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Escalate to a human host/manager for refunds, emergencies, exceptions or uncertainty.",
+        "method": "POST",
+        "url": "={{$env.HUMAN_HANDOFF_URL||'https://example.invalid/handoff'}}",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "Authorization", "valueProvider": "fieldValue", "value": "={'Bearer '+($env.SUPPORT_API_KEY||'')}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "model",
+        "placeholderDefinitions": {
+          "values": [
+            { "name": "guest_id", "description": "Guest ID", "type": "string" },
+            { "name": "reason", "description": "Reason", "type": "string" },
+            { "name": "priority", "description": "Priority", "type": "string" },
+            { "name": "summary", "description": "Summary", "type": "string" }
+          ]
+        },
+        "optimizeResponse": true,
+        "dataField": "data"
+      },
+      "id": "b3f4ff76-28be-45c0-aae7-bfd6c8ea8ca7",
+      "name": "Tool - Human Handoff",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [2336, 2240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw=String($json.output||$json.text||'').trim();let d;try{d=JSON.parse(raw)}catch(e){const m=raw.match(/\\{[\\s\\S]*\\}/);if(m){try{d=JSON.parse(m[0])}catch(_){}}}if(!d)d={intent:'support',reply:raw||'Sorry, I could not process that request.',booking_status:'support',lead_stage:'needs_human',needs_human:true};const o=$('Build Unified Agent Context').first().json;return [{json:{...o,...d,reply:String(d.reply||''),channel:o.channel,senderId:o.senderId||'',recipientId:o.recipientId||'',sessionId:o.sessionId||''}}];"
+      },
+      "id": "19c020f4-7e3e-4dd3-abaf-22f78f4c28b5",
+      "name": "Parse AI Agent Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2400, 2032]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.CRM_LEAD_URL||'https://example.invalid/crm/leads'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.CRM_API_KEY||''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify({channel:$json.channel,guest_id:$json.senderId||$json.leadgenId,name:$json.lead?.name||'',phone:$json.lead?.phone||$json.senderId||'',message:$json.text||'',intent:$json.intent,lead_stage:$json.lead_stage,booking_status:$json.booking_status,property_id:$json.property_id||'',booking_id:$json.booking_id||''})}}",
+        "options": {}
+      },
+      "id": "d6a5a5a2-aa87-496f-a322-cf688cde2735",
+      "name": "Log AI Lead Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2624, 2032]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "leftValue": "={{$json.channel}}", "rightValue": "whatsapp", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c8c2310c-7bfc-46b4-8982-daab7eebd8c6",
+      "name": "Is WhatsApp",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2848, 2032]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://graph.facebook.com/v23.0/'+($env.WHATSAPP_PHONE_NUMBER_ID||'')+'/messages'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify({messaging_product:'whatsapp',to:$json.senderId,type:'text',text:{preview_url:false,body:$json.reply}})}}",
+        "options": {}
+      },
+      "id": "a302ef29-7495-45e5-bfe7-fc70bf8c4e04",
+      "name": "Send WhatsApp AI Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3072, 1936]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "leftValue": "={{$json.channel}}", "rightValue": "instagram", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "06f47c8b-9487-4f0e-b6e1-a2bd215705e2",
+      "name": "Is Instagram",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3072, 2128]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://graph.facebook.com/v23.0/'+($env.INSTAGRAM_BUSINESS_ID||$json.recipientId||'')+'/messages'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify({recipient:{id:$json.senderId},message:{text:$json.reply}})}}",
+        "options": {}
+      },
+      "id": "6f3d1af9-fcab-4649-8c02-d4fac8ea1f2d",
+      "name": "Send Instagram AI Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3296, 2032]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone=$json.lead?.phone||$json.lead?.whatsapp||'';return [{json:{...$json,leadPhone:String(phone).replace(/[^0-9]/g,''),metaLeadReply:$json.reply}}];"
+      },
+      "id": "dfa4742a-165c-4ed4-8eb9-5d4bfdaba598",
+      "name": "Prepare Meta Ads Lead Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3296, 2224]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "leftValue": "={{$json.leadPhone}}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "91aed981-61d9-4c66-9c73-ea22914f7156",
+      "name": "Meta Lead Has WhatsApp",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3520, 2224]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://graph.facebook.com/v23.0/'+($env.WHATSAPP_PHONE_NUMBER_ID||'')+'/messages'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.META_ACCESS_TOKEN||''}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify({messaging_product:'whatsapp',to:$json.leadPhone,type:'text',text:{preview_url:false,body:$json.metaLeadReply}})}}",
+        "options": {}
+      },
+      "id": "9628b0ab-cf90-4b00-842f-d12890ff1d8d",
+      "name": "Send Meta Lead WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3744, 2128]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.STAFF_ALERT_URL||'https://example.invalid/staff-alert'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.STAFF_ALERT_API_KEY||''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify({source:'meta_ads',leadgen_id:$json.leadgenId,reply:$json.reply,lead:$json.lead||{}})}}",
+        "options": {}
+      },
+      "id": "d89010d4-b380-4645-9247-8366019bc604",
+      "name": "Notify Team For Meta Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3744, 2320]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "airbnb-booking-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f5f04d44-5a74-4322-bc3f-0192628f3edd",
+      "name": "Booking Lead Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [176, 2544],
+      "webhookId": "aa02aefa-a81e-41fe-849b-718c1f847fd6"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$input.first().json.body ?? $input.first().json;\nreturn [{json:{\n event:\"booking_lead\",\n lead_id:x.lead_id||x.id||`lead_${Date.now()}`,\n guest_name:x.guest_name||x.name||\"Guest\",\n phone:x.phone||null,email:x.email||null,\n check_in:x.check_in||null,check_out:x.check_out||null,\n guests:Number(x.guests||1),budget:x.budget??null,\n message:x.message||\"\",\n property_id:x.property_id||null,\n source:x.source||\"unknown\",\n raw:x\n}}];"
+      },
+      "id": "a8123b94-e546-4767-b174-40cdac014368",
+      "name": "Normalize Booking Lead1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 2544]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PMS_AVAILABILITY_URL || 'https://example.invalid/pms/availability' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.PMS_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({property_id:$json.property_id,check_in:$json.check_in,check_out:$json.check_out,guests:$json.guests}) }}",
+        "options": {}
+      },
+      "id": "cd0c4f00-8cef-49e9-84c4-fe8a4b57d29c",
+      "name": "PMS Availability Check1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [624, 2544]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first().json; const p=input.body ?? input;\nconst lead=$('Normalize Booking Lead1').first().json;\nreturn [{json:{lead,pms:p, prompt:`You are an Airbnb/vacation-rental sales agent. Return STRICT JSON with keys decision,reply,alternative_request. Guest: ${lead.guest_name}. Dates: ${lead.check_in} to ${lead.check_out}. Guests: ${lead.guests}. Budget: ${lead.budget}. Message: ${lead.message}. Availability data: ${JSON.stringify(p)}. If available, be concise and move toward booking. Never invent price or availability. If unavailable, ask for alternative dates or property.`}}];"
+      },
+      "id": "a0c82401-caab-4e2c-8b4d-fb7685ad4dc5",
+      "name": "Prepare Sarvam Sales Decision1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [848, 2544]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sarvam.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({model:\"sarvam-105b\",messages:[{role:\"system\",content:\"Return only valid JSON.\"},{role:\"user\",content:$json.prompt}],temperature:0.2}) }}",
+        "options": {}
+      },
+      "id": "1edb6cb7-9746-4e46-bc50-99a1e9a197ff",
+      "name": "Sarvam Sales AI1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1072, 2544]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$input.first().json; let c=r.choices?.[0]?.message?.content||\"{}\"; let a; try{a=JSON.parse(c)}catch(e){a={decision:\"human_review\",reply:c,alternative_request:null}};\nconst lead=$('Normalize Booking Lead1').first().json;\nreturn [{json:{ok:true,event:\"booking_lead_processed\",lead_id:lead.lead_id,guest_phone:lead.phone,decision:a.decision,reply:a.reply,alternative_request:a.alternative_request,requires_human:a.decision===\"human_review\"}}];"
+      },
+      "id": "f6d77985-9857-45c4-86dc-878e244dd077",
+      "name": "Build Booking Response1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1296, 2544]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GUEST_MESSAGING_URL || 'https://example.invalid/messaging/send' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.MESSAGING_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({to:$json.guest_phone,message:$json.reply,lead_id:$json.lead_id}) }}",
+        "options": {}
+      },
+      "id": "08264e17-1cab-464b-b8ce-da8b99afd8e7",
+      "name": "Send Guest Message1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 2544]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "b8bd0cfb-b4b9-484d-b7ca-8560e5ead7e5",
+      "name": "Respond to Lead1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1744, 2544]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sarvam-voice-event",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "77eea7f7-c796-4e04-a9ea-69e6eb560dc5",
+      "name": "Sarvam Voice Agent Event1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [176, 2768],
+      "webhookId": "39e3585d-bced-4751-8678-c62504168c24"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$input.first().json.body ?? $input.first().json;\nreturn [{json:{call_id:x.call_id||x.id||`call_${Date.now()}`,guest_phone:x.phone||x.from||null,transcript:x.transcript||x.text||\"\",intent:x.intent||\"unknown\",property_id:x.property_id||null,priority:x.priority||\"normal\",raw:x}}];"
+      },
+      "id": "49387fd4-6bf7-4ccd-b90e-31fc5b30bf68",
+      "name": "Normalize Voice Event1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 2768]
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$input.first().json;\nreturn [{json:{...x,prompt:`Classify this vacation-rental guest call. Return STRICT JSON keys intent,priority,reply,needs_human. Never invent policy. Transcript: ${x.transcript}`}}];"
+      },
+      "id": "e5f3cc2c-d2f1-4110-b4be-3665db7ec9df",
+      "name": "Voice Triage Prompt1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [624, 2768]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sarvam.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({model:\"sarvam-105b-conversations\",messages:[{role:\"system\",content:\"Return only valid JSON.\"},{role:\"user\",content:$json.prompt}],temperature:0.2}) }}",
+        "options": {}
+      },
+      "id": "4f3a0710-b500-4d4e-9a4d-0370c1fd6a90",
+      "name": "Sarvam Conversation AI1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [848, 2768]
+    },
+    {
+      "parameters": {
+        "jsCode": "let c=$input.first().json.choices?.[0]?.message?.content||\"{}\";let a;try{a=JSON.parse(c)}catch(e){a={intent:\"unknown\",priority:\"high\",reply:c,needs_human:true}};\nconst x=$('Normalize Voice Event1').first().json;\nreturn [{json:{...x,ai:a,escalate:Boolean(a.needs_human)||a.priority===\"urgent\"}}];"
+      },
+      "id": "0330b0c2-78d8-4ca1-8385-469a17f6a644",
+      "name": "Build Voice Action1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1072, 2768]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPPORT_TICKET_URL || 'https://example.invalid/support/tickets' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.SUPPORT_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({call_id:$json.call_id,guest_phone:$json.guest_phone,property_id:$json.property_id,intent:$json.ai.intent,priority:$json.ai.priority,transcript:$json.transcript}) }}",
+        "options": {}
+      },
+      "id": "c839e1eb-5a3c-4dec-8340-7dd5b4d72c0a",
+      "name": "Create Support Ticket1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1296, 2768]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SARVAM_AGENT_CALLBACK_URL || 'https://example.invalid/sarvam/callback' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.SARVAM_AGENT_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({call_id:$json.call_id,reply:$json.ai.reply,escalate:$json.escalate,ticket_created:true}) }}",
+        "options": {}
+      },
+      "id": "d915086a-9493-41a6-bb47-81ee73993d0a",
+      "name": "Return Voice Response1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 2768]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "bc5a4650-e4b8-4224-aa98-204d0b5ff1a5",
+      "name": "Respond Voice Event1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1744, 2768]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 */2 * * *" }
+          ]
+        }
+      },
+      "id": "aa1b8389-c812-42ed-a6ee-7fe5c1f81ff6",
+      "name": "Follow-up Scheduler1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [176, 2992]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.CRM_FOLLOWUP_URL || 'https://example.invalid/crm/followups' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.CRM_API_KEY || ''}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4908b582-5a66-461d-b8b1-3da6b9457d2e",
+      "name": "Fetch Follow-up Candidates1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 2992]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data=$input.first().json; const rows=Array.isArray(data)?data:(data.leads||data.data||[]);\nreturn rows.map(x=>({json:{lead_id:x.lead_id||x.id,phone:x.phone,message_context:x.message_context||x.last_message||\"\",property_id:x.property_id||null,dates:x.dates||null,price:x.price??null,prompt:`Write one concise follow-up for a vacation-rental lead. Do not invent availability, urgency, discounts, or price. Context: ${x.message_context||\"\"}. Dates: ${JSON.stringify(x.dates||null)}. Price: ${x.price??\"unknown\"}.`}}));"
+      },
+      "id": "6cf3b041-df7b-43b6-9dc7-688ba305b5fe",
+      "name": "Build Follow-up Messages1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [624, 2992]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sarvam.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({model:\"sarvam-105b\",messages:[{role:\"system\",content:\"Return only the message text.\"},{role:\"user\",content:$json.prompt}],temperature:0.3}) }}",
+        "options": {}
+      },
+      "id": "8110ce27-e9fe-4518-a468-47037ac1b2cc",
+      "name": "Sarvam Follow-up Copy1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [848, 2992]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{lead_id:$('Build Follow-up Messages1').item.json.lead_id,phone:$('Build Follow-up Messages1').item.json.phone,message:$input.first().json.choices?.[0]?.message?.content||\"Hi! Just checking if you still need help with your stay.\"}}];"
+      },
+      "id": "6e18bd99-e5eb-4c19-bbca-7d73882b6576",
+      "name": "Prepare Follow-up Send1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1072, 2992]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GUEST_MESSAGING_URL || 'https://example.invalid/messaging/send' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.MESSAGING_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({to:$json.phone,message:$json.message,lead_id:$json.lead_id}) }}",
+        "options": {}
+      },
+      "id": "9150c493-f713-4aea-8480-79d7cf5961d4",
+      "name": "Send Follow-up1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1296, 2992]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "15 5 * * *" }
+          ]
+        }
+      },
+      "id": "f251bfcb-86c4-45d5-a2ef-1fce35e8f04f",
+      "name": "Pricing Scheduler1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [176, 3216]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PMS_PRICING_DATA_URL || 'https://example.invalid/pms/pricing-data' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.PMS_API_KEY || ''}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4385eb45-503d-469e-9631-67aac698f838",
+      "name": "Fetch Property Metrics1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 3216]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json; const rows=Array.isArray(d)?d:(d.properties||d.data||[]);\nreturn rows.map(x=>({json:{property_id:x.property_id||x.id,current_price:x.current_price,occupancy:x.occupancy,upcoming_bookings:x.upcoming_bookings||[],local_events:x.local_events||[],comps:x.comps||[],prompt:`Act as a vacation-rental revenue analyst. Return STRICT JSON keys recommended_price,reason,confidence,action. Only recommend a price if current data supports it; never invent competitor prices. Data: ${JSON.stringify(x)}`}}));"
+      },
+      "id": "1f540950-a19f-48b1-92ce-1065822aa9af",
+      "name": "Build Pricing Prompt1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [624, 3216]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sarvam.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({model:\"sarvam-105b\",messages:[{role:\"system\",content:\"Return only valid JSON.\"},{role:\"user\",content:$json.prompt}],temperature:0.1}) }}",
+        "options": {}
+      },
+      "id": "1342484b-37de-4794-86b7-6f45e2b61c5e",
+      "name": "Sarvam Revenue AI1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [848, 3216]
+    },
+    {
+      "parameters": {
+        "jsCode": "let c=$input.first().json.choices?.[0]?.message?.content||\"{}\";let a;try{a=JSON.parse(c)}catch(e){a={recommended_price:null,reason:\"AI parse failure\",confidence:0,action:\"human_review\"}};\nreturn [{json:{property_id:$('Build Pricing Prompt1').item.json.property_id,current_price:$('Build Pricing Prompt1').item.json.current_price,recommendation:a,requires_approval:true}}];"
+      },
+      "id": "b83eff45-0716-4573-9d8d-452d91455408",
+      "name": "Prepare Pricing Approval1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1072, 3216]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PRICING_APPROVAL_URL || 'https://example.invalid/pricing/approval' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.APPROVAL_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "90f88cf1-08ef-421c-9c27-c72f47b04631",
+      "name": "Send Pricing Approval1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1296, 3216]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "airbnb-review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9ce188e4-201c-4fe4-abc0-f3a2b624b545",
+      "name": "Review Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [176, 3440],
+      "webhookId": "f509d0da-7f4f-4af6-86b7-264069c63f26"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$input.first().json.body ?? $input.first().json;\nreturn [{json:{review_id:x.review_id||x.id||`review_${Date.now()}`,property_id:x.property_id||null,guest_name:x.guest_name||\"Guest\",rating:Number(x.rating||0),review:x.review||x.text||\"\",source:x.source||\"airbnb\"}}];"
+      },
+      "id": "b6900a31-25ea-4de6-87a5-83a5bdbe7baf",
+      "name": "Normalize Review1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 3440]
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$input.first().json; return [{json:{...x,prompt:`Analyze this vacation-rental review. Return STRICT JSON keys sentiment,issues,praise,reply,staff_action. Be professional, never argue, never admit liability, and do not expose private guest data. Rating: ${x.rating}. Review: ${x.review}`}}];"
+      },
+      "id": "44115932-42eb-4462-ba26-3ae21668d1e1",
+      "name": "Build Reputation Prompt1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [624, 3440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sarvam.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-subscription-key", "value": "{{$env.SARVAM_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({model:\"sarvam-105b\",messages:[{role:\"system\",content:\"Return only valid JSON.\"},{role:\"user\",content:$json.prompt}],temperature:0.2}) }}",
+        "options": {}
+      },
+      "id": "80717bd0-3cf9-4615-bb06-4263ae0b79e6",
+      "name": "Sarvam Review AI1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [848, 3440]
+    },
+    {
+      "parameters": {
+        "jsCode": "let c=$input.first().json.choices?.[0]?.message?.content||\"{}\";let a;try{a=JSON.parse(c)}catch(e){a={sentiment:\"unknown\",issues:[\"parse_failure\"],praise:[],reply:c,staff_action:\"human_review\"}};\nconst x=$('Normalize Review1').first().json; return [{json:{...x,ai:a,needs_staff_review:x.rating<=3||a.staff_action===\"human_review\"}}];"
+      },
+      "id": "2bd31b2f-1651-4a3a-bbaa-75f472ed8ac8",
+      "name": "Prepare Reputation Actions1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1072, 3440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.REVIEW_REPLY_URL || 'https://example.invalid/reviews/reply' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.REVIEW_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({review_id:$json.review_id,reply:$json.ai.reply,property_id:$json.property_id}) }}",
+        "options": {}
+      },
+      "id": "ad6bda83-488f-4d66-92d4-8e11682f542f",
+      "name": "Publish Review Reply1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1296, 3440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.STAFF_ALERT_URL || 'https://example.invalid/staff/alert' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.STAFF_ALERT_API_KEY || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({review_id:$json.review_id,property_id:$json.property_id,needs_staff_review:$json.needs_staff_review,issues:$json.ai.issues,staff_action:$json.ai.staff_action}) }}",
+        "options": {}
+      },
+      "id": "6130d9d2-06ad-482b-8ce2-198ca1a54dbb",
+      "name": "Notify Staff1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 3440]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "9a6f804d-304c-491b-8ace-2d36bca5663d",
+      "name": "Respond Review1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1744, 3440]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Meta Webhook Verify": { "main": [[{ "node": "Return Meta Challenge", "type": "main", "index": 0 }]] },
+    "Return Meta Challenge": { "main": [[{ "node": "Meta Verify Response", "type": "main", "index": 0 }]] },
+    "WhatsApp Booking Webhook": { "main": [[{ "node": "Normalize WhatsApp Event", "type": "main", "index": 0 }]] },
+    "Instagram Booking Webhook": { "main": [[{ "node": "Normalize Instagram Event", "type": "main", "index": 0 }]] },
+    "Meta Ads Lead Webhook": { "main": [[{ "node": "Normalize Meta Ads Lead", "type": "main", "index": 0 }]] },
+    "Normalize Meta Ads Lead": { "main": [[{ "node": "Fetch Meta Lead Details", "type": "main", "index": 0 }]] },
+    "Fetch Meta Lead Details": { "main": [[{ "node": "Prepare Meta Lead For Agent", "type": "main", "index": 0 }]] },
+    "Normalize WhatsApp Event": { "main": [[{ "node": "Build Unified Agent Context", "type": "main", "index": 0 }]] },
+    "Normalize Instagram Event": { "main": [[{ "node": "Build Unified Agent Context", "type": "main", "index": 0 }]] },
+    "Prepare Meta Lead For Agent": { "main": [[{ "node": "Build Unified Agent Context", "type": "main", "index": 0 }]] },
+    "Sarvam AI Chat Model": { "ai_languageModel": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Guest Conversation Memory": { "ai_memory": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_memory", "index": 0 }]] },
+    "Build Unified Agent Context": { "main": [[{ "node": "Airbnb AI Booking Agent", "type": "main", "index": 0 }]] },
+    "Tool - Check Availability": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
+    "Tool - Property Search": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
+    "Tool - Create Booking": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
+    "Tool - Create CRM Lead": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
+    "Tool - Create Support Ticket": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
+    "Tool - Human Handoff": { "ai_tool": [[{ "node": "Airbnb AI Booking Agent", "type": "ai_tool", "index": 0 }]] },
+    "Airbnb AI Booking Agent": { "main": [[{ "node": "Parse AI Agent Decision", "type": "main", "index": 0 }]] },
+    "Parse AI Agent Decision": { "main": [[{ "node": "Log AI Lead Decision", "type": "main", "index": 0 }]] },
+    "Log AI Lead Decision": { "main": [[{ "node": "Is WhatsApp", "type": "main", "index": 0 }]] },
+    "Is WhatsApp": {
+      "main": [
+        [{ "node": "Send WhatsApp AI Reply", "type": "main", "index": 0 }],
+        [{ "node": "Is Instagram", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Instagram": {
+      "main": [
+        [{ "node": "Send Instagram AI Reply", "type": "main", "index": 0 }],
+        [{ "node": "Prepare Meta Ads Lead Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Meta Ads Lead Response": { "main": [[{ "node": "Meta Lead Has WhatsApp", "type": "main", "index": 0 }]] },
+    "Meta Lead Has WhatsApp": {
+      "main": [
+        [{ "node": "Send Meta Lead WhatsApp", "type": "main", "index": 0 }],
+        [{ "node": "Notify Team For Meta Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Booking Lead Webhook1": { "main": [[{ "node": "Normalize Booking Lead1", "type": "main", "index": 0 }]] },
+    "Normalize Booking Lead1": { "main": [[{ "node": "PMS Availability Check1", "type": "main", "index": 0 }]] },
+    "PMS Availability Check1": { "main": [[{ "node": "Prepare Sarvam Sales Decision1", "type": "main", "index": 0 }]] },
+    "Prepare Sarvam Sales Decision1": { "main": [[{ "node": "Sarvam Sales AI1", "type": "main", "index": 0 }]] },
+    "Sarvam Sales AI1": { "main": [[{ "node": "Build Booking Response1", "type": "main", "index": 0 }]] },
+    "Build Booking Response1": { "main": [[{ "node": "Send Guest Message1", "type": "main", "index": 0 }]] },
+    "Send Guest Message1": { "main": [[{ "node": "Respond to Lead1", "type": "main", "index": 0 }]] },
+    "Sarvam Voice Agent Event1": { "main": [[{ "node": "Normalize Voice Event1", "type": "main", "index": 0 }]] },
+    "Normalize Voice Event1": { "main": [[{ "node": "Voice Triage Prompt1", "type": "main", "index": 0 }]] },
+    "Voice Triage Prompt1": { "main": [[{ "node": "Sarvam Conversation AI1", "type": "main", "index": 0 }]] },
+    "Sarvam Conversation AI1": { "main": [[{ "node": "Build Voice Action1", "type": "main", "index": 0 }]] },
+    "Build Voice Action1": { "main": [[{ "node": "Create Support Ticket1", "type": "main", "index": 0 }]] },
+    "Create Support Ticket1": { "main": [[{ "node": "Return Voice Response1", "type": "main", "index": 0 }]] },
+    "Return Voice Response1": { "main": [[{ "node": "Respond Voice Event1", "type": "main", "index": 0 }]] },
+    "Follow-up Scheduler1": { "main": [[{ "node": "Fetch Follow-up Candidates1", "type": "main", "index": 0 }]] },
+    "Fetch Follow-up Candidates1": { "main": [[{ "node": "Build Follow-up Messages1", "type": "main", "index": 0 }]] },
+    "Build Follow-up Messages1": { "main": [[{ "node": "Sarvam Follow-up Copy1", "type": "main", "index": 0 }]] },
+    "Sarvam Follow-up Copy1": { "main": [[{ "node": "Prepare Follow-up Send1", "type": "main", "index": 0 }]] },
+    "Prepare Follow-up Send1": { "main": [[{ "node": "Send Follow-up1", "type": "main", "index": 0 }]] },
+    "Pricing Scheduler1": { "main": [[{ "node": "Fetch Property Metrics1", "type": "main", "index": 0 }]] },
+    "Fetch Property Metrics1": { "main": [[{ "node": "Build Pricing Prompt1", "type": "main", "index": 0 }]] },
+    "Build Pricing Prompt1": { "main": [[{ "node": "Sarvam Revenue AI1", "type": "main", "index": 0 }]] },
+    "Sarvam Revenue AI1": { "main": [[{ "node": "Prepare Pricing Approval1", "type": "main", "index": 0 }]] },
+    "Prepare Pricing Approval1": { "main": [[{ "node": "Send Pricing Approval1", "type": "main", "index": 0 }]] },
+    "Review Webhook1": { "main": [[{ "node": "Normalize Review1", "type": "main", "index": 0 }]] },
+    "Normalize Review1": { "main": [[{ "node": "Build Reputation Prompt1", "type": "main", "index": 0 }]] },
+    "Build Reputation Prompt1": { "main": [[{ "node": "Sarvam Review AI1", "type": "main", "index": 0 }]] },
+    "Sarvam Review AI1": { "main": [[{ "node": "Prepare Reputation Actions1", "type": "main", "index": 0 }]] },
+    "Prepare Reputation Actions1": { "main": [[{ "node": "Publish Review Reply1", "type": "main", "index": 0 }]] },
+    "Publish Review Reply1": { "main": [[{ "node": "Notify Staff1", "type": "main", "index": 0 }]] },
+    "Notify Staff1": { "main": [[{ "node": "Respond Review1", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1cc21648-7d2b-4f3b-aa43-13d54f601120",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a2c8529ed1db4fdaeb0467a2ab7db18ff101845640ddf50c2634a24befb8832f"
+  },
+  "id": "sCssNTIF6vcLU4n9",
+  "tags": []
+}

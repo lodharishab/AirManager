@@ -41,6 +41,7 @@ import {
   buildOverdueTaskEmail,
 } from "./email";
 import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectStorageUrl, getMimeType } from "./object-storage";
+import { getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -367,6 +368,51 @@ export async function registerRoutes(
 
   // Protect all remaining /api routes
   app.use("/api", requireAuth);
+
+  app.get("/api/settings/ai", asyncHandler(async (req, res) => {
+    const cfg = await getAiConfig();
+    const maskedKey = cfg.apiKey
+      ? `••••${cfg.apiKey.slice(-4)}`
+      : "";
+    res.json({
+      provider: cfg.provider,
+      baseUrl: cfg.baseUrl,
+      model: cfg.model,
+      hasApiKey: Boolean(cfg.apiKey),
+      maskedApiKey: maskedKey,
+    });
+  }));
+
+  app.put("/api/settings/ai", asyncHandler(async (req, res) => {
+    const body = req.body as Partial<{
+      provider: string;
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+    }>;
+    if (body.provider !== undefined && !AI_PROVIDERS.includes(body.provider as AiProvider)) {
+      return res.status(400).json({ message: `Unknown provider: ${body.provider}` });
+    }
+    const cfg = await saveAiConfig({
+      provider: body.provider as AiProvider | undefined,
+      baseUrl: body.baseUrl,
+      apiKey: body.apiKey,
+      model: body.model,
+    });
+    res.json({
+      provider: cfg.provider,
+      baseUrl: cfg.baseUrl,
+      model: cfg.model,
+      hasApiKey: Boolean(cfg.apiKey),
+      maskedApiKey: cfg.apiKey ? `••••${cfg.apiKey.slice(-4)}` : "",
+    });
+  }));
+
+  app.post("/api/settings/ai/test", asyncHandler(async (req, res) => {
+    const cfg = await getAiConfig();
+    const result = await testAiConnection(cfg);
+    res.json(result);
+  }));
 
   app.post("/api/upload", upload.array("files", 20), asyncHandler(async (req, res) => {
     const files = req.files as Express.Multer.File[];

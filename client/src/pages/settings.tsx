@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Bell, Shield, Mail } from "lucide-react";
+import { User, Bell, Shield, Mail, Bot } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,79 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [notificationEmail, setNotificationEmail] = useState("");
+
+  interface AiSettings {
+    provider: "openai_compatible" | "sarvam";
+    baseUrl: string;
+    model: string;
+    hasApiKey: boolean;
+    maskedApiKey: string;
+  }
+
+  const { data: aiSettings } = useQuery<AiSettings>({
+    queryKey: ["/api/settings/ai"],
+  });
+
+  const [aiProvider, setAiProvider] = useState<string>("");
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiModel, setAiModel] = useState("");
+
+  useEffect(() => {
+    if (aiSettings) {
+      setAiProvider(aiSettings.provider);
+      setAiBaseUrl(aiSettings.baseUrl);
+      setAiModel(aiSettings.model);
+    }
+  }, [aiSettings?.provider, aiSettings?.baseUrl, aiSettings?.model]);
+
+  const aiSaveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PUT", "/api/settings/ai", {
+        provider: aiProvider,
+        baseUrl: aiBaseUrl,
+        apiKey: aiApiKey || undefined,
+        model: aiModel,
+      });
+      return res.json();
+    },
+    onSuccess: (data: AiSettings) => {
+      queryClient.setQueryData(["/api/settings/ai"], data);
+      setAiApiKey("");
+      toast({ title: "AI settings saved", description: "Your AI provider configuration has been updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const aiTestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/ai/test", {});
+      return res.json() as Promise<{ ok: boolean; models?: string[]; error?: string }>;
+    },
+    onSuccess: (data) => {
+      if (data.ok) {
+        toast({
+          title: "Connection successful",
+          description: data.models?.length ? `Provider reachable — ${data.models.length} models available.` : "Provider reachable.",
+        });
+      } else {
+        toast({ title: "Connection failed", description: data.error || "Unknown error", variant: "destructive" });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Connection failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleAiSave = () => {
+    if (!aiBaseUrl || !aiModel) {
+      toast({ title: "Missing fields", description: "Base URL and model are required.", variant: "destructive" });
+      return;
+    }
+    aiSaveMutation.mutate();
+  };
 
   const { data: preferences } = useQuery<UserPreferences>({
     queryKey: ["/api/user-preferences"],
@@ -143,6 +217,10 @@ export default function Settings() {
           <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-security">
             <Shield className="h-4 w-4 mr-2" />
             Security
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-ai">
+            <Bot className="h-4 w-4 mr-2" />
+            AI
           </TabsTrigger>
         </TabsList>
 
@@ -322,6 +400,90 @@ export default function Settings() {
                   data-testid="button-update-password"
                 >
                   {passwordMutation.isPending ? "Updating..." : "Update Password"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <Card className="border-border shadow-sm bg-card/50">
+            <CardHeader className="border-b border-border/50 pb-4">
+              <CardTitle className="font-serif tracking-wide text-primary">AI Provider</CardTitle>
+              <CardDescription>
+                Configure which AI provider the platform uses. Any OpenAI-compatible endpoint works
+                (OpenAI, OpenRouter, Groq, Ollama, vLLM…), and Sarvam is supported natively for
+                Indic-language models.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-2 max-w-md">
+                <Label className="text-muted-foreground">Provider</Label>
+                <Select value={aiProvider} onValueChange={setAiProvider} data-testid="select-ai-provider">
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai_compatible">OpenAI-compatible</SelectItem>
+                    <SelectItem value="sarvam">Sarvam AI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 max-w-md">
+                <Label htmlFor="aiBaseUrl" className="text-muted-foreground">Base URL</Label>
+                <Input
+                  id="aiBaseUrl"
+                  value={aiBaseUrl}
+                  onChange={(e) => setAiBaseUrl(e.target.value)}
+                  placeholder={aiProvider === "sarvam" ? "https://api.sarvam.ai/v1" : "https://api.openai.com/v1"}
+                  className="bg-background border-border"
+                  data-testid="input-ai-base-url"
+                />
+              </div>
+
+              <div className="space-y-2 max-w-md">
+                <Label htmlFor="aiApiKey" className="text-muted-foreground">API Key</Label>
+                <Input
+                  id="aiApiKey"
+                  type="password"
+                  value={aiApiKey}
+                  onChange={(e) => setAiApiKey(e.target.value)}
+                  placeholder={aiSettings?.hasApiKey ? `Saved (${aiSettings.maskedApiKey}) — leave blank to keep` : "Enter API key"}
+                  className="bg-background border-border"
+                  data-testid="input-ai-api-key"
+                />
+              </div>
+
+              <div className="space-y-2 max-w-md">
+                <Label htmlFor="aiModel" className="text-muted-foreground">Model</Label>
+                <Input
+                  id="aiModel"
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  placeholder={aiProvider === "sarvam" ? "sarvam-105b" : "gpt-4o-mini"}
+                  className="bg-background border-border"
+                  data-testid="input-ai-model"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  className="border-border"
+                  onClick={() => aiTestMutation.mutate()}
+                  disabled={aiTestMutation.isPending}
+                  data-testid="button-test-ai"
+                >
+                  {aiTestMutation.isPending ? "Testing..." : "Test Connection"}
+                </Button>
+                <Button
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={handleAiSave}
+                  disabled={aiSaveMutation.isPending}
+                  data-testid="button-save-ai"
+                >
+                  {aiSaveMutation.isPending ? "Saving..." : "Save AI Settings"}
                 </Button>
               </div>
             </CardContent>

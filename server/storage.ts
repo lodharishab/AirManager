@@ -1,7 +1,7 @@
 import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars,
+  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
@@ -162,6 +162,10 @@ export interface IStorage {
   updateExternalCalendar(id: number, data: Partial<InsertExternalCalendar>): Promise<ExternalCalendar | undefined>;
   deleteExternalCalendar(id: number): Promise<void>;
   deleteExternalBookings(propertyId: number, source: string): Promise<void>;
+
+  getSetting(key: string): Promise<string | undefined>;
+  getSettings(prefix: string): Promise<Record<string, string>>;
+  setSetting(key: string, value: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -883,6 +887,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExternalBookings(propertyId: number, source: string): Promise<void> {
     await db.delete(bookings).where(and(eq(bookings.propertyId, propertyId), eq(bookings.source, source)));
+  }
+
+  async getSetting(key: string): Promise<string | undefined> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value;
+  }
+
+  async getSettings(prefix: string): Promise<Record<string, string>> {
+    const rows = await db.select().from(appSettings).where(ilike(appSettings.key, `${prefix}%`));
+    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    await db
+      .insert(appSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
   }
 }
 
