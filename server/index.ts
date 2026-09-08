@@ -3,6 +3,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import { randomUUID } from "crypto";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -25,6 +26,13 @@ declare module "express-serve-static-core" {
 }
 
 const app = express();
+app.disable("x-powered-by");
+// Behind a reverse proxy (nginx/caddy) set TRUST_PROXY=1 so rate limits & secure cookies use real client IPs.
+if (process.env.TRUST_PROXY === "1") {
+  app.set("trust proxy", 1);
+}
+// Security headers. CSP left off: the React bundle needs inline bootstrap; enable with a policy once audited.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 const httpServer = createServer(app);
 
 app.disable("x-powered-by");
@@ -232,9 +240,29 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${config.port}`);
-      startFollowUpScheduler();
-      startPricingScheduler();
-      startTicketTriageScheduler();
+      const schedulers: NodeJS.Timeout[] = [
+        startFollowUpScheduler(),
+        startPricingScheduler(),
+        startTicketTriageScheduler(),
+      ];
+
+      let shuttingDown = false;
+      const shutdown = (signal: string) => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        log(`${signal} received — shutting down gracefully`);
+        schedulers.forEach((t) => clearInterval(t));
+        httpServer.close(() => {
+          import("./db")
+            .then(({ pool }) => pool.end())
+            .catch(() => {})
+            .finally(() => process.exit(0));
+        });
+        // Force-exit if connections hang around.
+        setTimeout(() => process.exit(0), 10_000).unref();
+      };
+      process.on("SIGTERM", () => shutdown("SIGTERM"));
+      process.on("SIGINT", () => shutdown("SIGINT"));
     },
   );
 })();

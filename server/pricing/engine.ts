@@ -149,21 +149,33 @@ export async function runPricingRecommendations(): Promise<PricingRunResult> {
 const DAILY_HOUR = 5;
 const DAILY_MINUTE = 15;
 
-export function startPricingScheduler(): void {
+let pricingRunInFlight = false;
+
+export function startPricingScheduler(): NodeJS.Timeout {
+  let timer: NodeJS.Timeout | undefined;
   const scheduleNext = () => {
     const now = new Date();
     const next = new Date(now);
     next.setHours(DAILY_HOUR, DAILY_MINUTE, 0, 0);
     if (next <= now) next.setDate(next.getDate() + 1);
 
-    setTimeout(() => {
-      runPricingRecommendations().catch((e) => {
-        console.error("Pricing recommendation run failed:", e);
-      });
+    timer = setTimeout(() => {
+      // Overlap guard: a slow AI run must not stack with the next day's run.
+      if (!pricingRunInFlight) {
+        pricingRunInFlight = true;
+        runPricingRecommendations()
+          .catch((e) => {
+            console.error("Pricing recommendation run failed:", e);
+          })
+          .finally(() => {
+            pricingRunInFlight = false;
+          });
+      }
       scheduleNext();
     }, next.getTime() - now.getTime());
   };
   scheduleNext();
+  return timer!;
 }
 
 export async function approvePriceRecommendation(id: number): Promise<PriceRecommendation | undefined> {

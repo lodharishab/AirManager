@@ -183,11 +183,20 @@ export async function runTriage(): Promise<TriageRunResult> {
 
 const SWEEP_INTERVAL_MS = Number(process.env.TICKET_TRIAGE_INTERVAL_MS || 2 * 3600_000);
 
+let sweepInFlight = false;
+
 export function startTicketTriageScheduler(): NodeJS.Timeout {
   const timer = setInterval(() => {
-    runTriage().catch((e) => {
-      console.error("Ticket triage sweep failed:", e);
-    });
+    // Overlap guard: never run two sweeps concurrently (slow AI calls must not stack).
+    if (sweepInFlight) return;
+    sweepInFlight = true;
+    runTriage()
+      .catch((e) => {
+        console.error("Ticket triage sweep failed:", e);
+      })
+      .finally(() => {
+        sweepInFlight = false;
+      });
   }, SWEEP_INTERVAL_MS);
   return timer;
 }

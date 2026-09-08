@@ -118,11 +118,20 @@ export async function runFollowUpSweep(): Promise<FollowUpSweepResult> {
 
 const SWEEP_INTERVAL_MS = Number(process.env.FOLLOW_UP_SWEEP_INTERVAL_MS || 2 * 3600_000);
 
+let sweepInFlight = false;
+
 export function startFollowUpScheduler(): NodeJS.Timeout {
   const timer = setInterval(() => {
-    runFollowUpSweep().catch((e) => {
-      console.error("Follow-up sweep failed:", e);
-    });
+    // Overlap guard: never run two sweeps concurrently (slow AI calls must not stack).
+    if (sweepInFlight) return;
+    sweepInFlight = true;
+    runFollowUpSweep()
+      .catch((e) => {
+        console.error("Follow-up sweep failed:", e);
+      })
+      .finally(() => {
+        sweepInFlight = false;
+      });
   }, SWEEP_INTERVAL_MS);
   return timer;
 }

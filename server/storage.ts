@@ -107,6 +107,7 @@ export interface IStorage {
   updateBooking(id: number, booking: Partial<InsertBooking>): Promise<Booking | undefined>;
   deleteBooking(id: number): Promise<void>;
   hasOverlappingBooking(propertyId: number, checkIn: string, checkOut: string, excludeBookingId?: number): Promise<boolean>;
+  getAvailabilityInfo(propertyId: number, checkIn: string, checkOut: string): Promise<{ available: boolean; bookingMode: string; bookedUnits: number; capacity: number | null; wholePropertyBooked: boolean; }>;
   getAllBookings(): Promise<Booking[]>;
 
   getConversations(): Promise<Conversation[]>;
@@ -403,11 +404,34 @@ export class DatabaseStorage implements IStorage {
     try {
       await client.query("BEGIN");
       await client.query("LOCK TABLE bookings IN EXCLUSIVE MODE");
-      const overlapCheck = await client.query(
-        `SELECT 1 FROM bookings WHERE property_id = $1 AND check_in < $2 AND check_out > $3 AND deleted_at IS NULL LIMIT 1`,
+      // Room-aware conflict detection inside the locked transaction.
+      // Whole-property booking: ANY overlap blocks. Room-based: a specific room
+      // blocks only if that same room overlaps; otherwise capacity is checked.
+      const modeResult = await client.query(`SELECT booking_mode FROM properties WHERE id = $1`, [booking.propertyId]);
+      const bookingMode = modeResult.rows[0]?.booking_mode ?? "whole";
+      const overlapRows = await client.query(
+        `SELECT room_id, COALESCE(room_count, 1) AS units
+           FROM bookings
+          WHERE property_id = $1 AND check_in < $2 AND check_out > $3
+            AND deleted_at IS NULL AND status != 'cancelled'`,
         [booking.propertyId, booking.checkOut, booking.checkIn]
       );
-      if (overlapCheck.rows.length > 0) {
+      const overlaps = overlapRows.rows;
+      let conflict = false;
+      if (bookingMode === "whole") {
+        conflict = overlaps.length > 0;
+      } else if (booking.roomId != null) {
+        conflict = overlaps.some((r: { room_id: number | null }) => r.room_id === booking.roomId);
+      } else {
+        const capacityResult = await client.query(
+          `SELECT COALESCE(SUM(room_count), 0) AS capacity FROM rooms WHERE property_id = $1`,
+          [booking.propertyId]
+        );
+        const capacity = Number(capacityResult.rows[0]?.capacity ?? 0);
+        const bookedUnits = overlaps.reduce((sum: number, r: { units: number }) => sum + Number(r.units), 0);
+        conflict = bookedUnits + Math.max(booking.roomCount ?? 1, 1) > capacity;
+      }
+      if (conflict) {
         await client.query("ROLLBACK");
         throw new Error("BOOKING_OVERLAP");
       }
@@ -468,6 +492,36 @@ export class DatabaseStorage implements IStorage {
     }
     const result = await db.select().from(bookings).where(and(...conditions));
     return result.length > 0;
+  }
+
+  async getAvailabilityInfo(propertyId: number, checkIn: string, checkOut: string): Promise<{ available: boolean; bookingMode: string; bookedUnits: number; capacity: number | null; wholePropertyBooked: boolean; }> {
+    const [property] = await db.select().from(properties).where(eq(properties.id, propertyId));
+    if (!property) throw new Error("PROPERTY_NOT_FOUND");
+    const bookingMode = property.bookingMode || "whole";
+    const overlapping = await db
+      .select({ roomId: bookings.roomId, roomCount: bookings.roomCount })
+      .from(bookings)
+      .where(and(
+        eq(bookings.propertyId, propertyId),
+        isNull(bookings.deletedAt),
+        sql`${bookings.status} != 'cancelled'`,
+        lt(bookings.checkIn, checkOut),
+        gt(bookings.checkOut, checkIn),
+      ));
+    const wholePropertyBooked = overlapping.some((b) => b.roomId === null);
+    const bookedUnits = overlapping.reduce((sum, b) => sum + Math.max(b.roomCount ?? 1, 1), 0);
+    let capacity: number | null = null;
+    if (bookingMode === "room_based") {
+      const propertyRooms = await this.getRoomsByProperty(propertyId);
+      capacity = propertyRooms.reduce((sum, r) => sum + Math.max(r.roomCount, 1), 0);
+    }
+    let available: boolean;
+    if (bookingMode === "whole") {
+      available = overlapping.length === 0;
+    } else {
+      available = !wholePropertyBooked && bookedUnits < (capacity ?? 0);
+    }
+    return { available, bookingMode, bookedUnits, capacity, wholePropertyBooked };
   }
 
   async getConversations(): Promise<Conversation[]> {

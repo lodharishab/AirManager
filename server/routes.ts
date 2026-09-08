@@ -79,8 +79,13 @@ function asyncHandler(fn: AsyncHandler) {
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   // API-key auth for the n8n dev harness / server-to-server callers
   const apiKey = process.env.AIRMANAGER_API_KEY;
-  if (apiKey && req.headers["x-api-key"] === apiKey) {
-    return next();
+  const provided = req.headers["x-api-key"];
+  if (apiKey && typeof provided === "string") {
+    const a = Buffer.from(provided);
+    const b = Buffer.from(apiKey);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      return next();
+    }
   }
   if (!req.session?.userId) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -946,13 +951,16 @@ export async function registerRoutes(
     if (String(checkIn) >= String(checkOut)) {
       return res.status(400).json({ message: "checkOut must be after checkIn" });
     }
-    const available = !(await storage.hasOverlappingBooking(property.id, String(checkIn), String(checkOut)));
+    const info = await storage.getAvailabilityInfo(property.id, String(checkIn), String(checkOut));
     res.json({
       propertyId: property.id,
       propertyName: property.name,
       checkIn,
       checkOut,
-      available,
+      available: info.available,
+      bookingMode: info.bookingMode,
+      bookedUnits: info.bookedUnits,
+      capacity: info.capacity,
       nightlyRate: property.nightlyRate,
       currency: property.currency || "USD",
     });
@@ -2006,6 +2014,22 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
 
     const created: string[] = [];
 
+    // Dedupe: skip if an identical notification was already created today.
+    const existingNotifications = await storage.getNotifications();
+    const todayPrefix = now.toISOString().slice(0, 10);
+    const seen = new Set(
+      existingNotifications
+        .filter((n) => (n.createdAt || "").slice(0, 10) === todayPrefix)
+        .map((n) => `${n.type}|${n.message}`)
+    );
+    const dedupe = async (type: string, message: string, create: () => Promise<unknown>) => {
+      const key = `${type}|${message}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      await create();
+      return true;
+    };
+
     for (const booking of allBookings) {
       if (booking.status === "cancelled" || booking.status === "completed") continue;
       const checkInDate = booking.checkIn.split("T")[0];
@@ -2014,29 +2038,31 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
       const propName = property?.name ?? `Property #${booking.propertyId}`;
 
       if (checkInDate === tomorrowStr) {
-        await storage.createNotification({
+        const madeCheckIn = await dedupe("check_in", `${booking.guestName} checks in to ${propName} tomorrow.`, async () => storage.createNotification({
           type: "check_in",
           title: "Upcoming Check-in Tomorrow",
           message: `${booking.guestName} checks in to ${propName} tomorrow.`,
           link: "/bookings",
           isRead: 0,
           createdAt: now.toISOString(),
-        });
-        created.push("check_in");
-        const emailData = buildCheckInReminderEmail(booking.guestName, propName, tomorrowStr);
-        trySendNotificationEmail(emailData, "check_in");
+          }));
+        if (madeCheckIn) {
+          created.push("check_in");
+          const emailData = buildCheckInReminderEmail(booking.guestName, propName, tomorrowStr);
+          trySendNotificationEmail(emailData, "check_in");
+        }
       }
 
       if (checkOutDate === todayStr) {
-        await storage.createNotification({
+        const madeCheckOut = await dedupe("check_out", `${booking.guestName} is checking out of ${propName} today.`, async () => storage.createNotification({
           type: "check_out",
           title: "Guest Check-out Today",
           message: `${booking.guestName} is checking out of ${propName} today.`,
           link: "/bookings",
           isRead: 0,
           createdAt: now.toISOString(),
-        });
-        created.push("check_out");
+          }));
+        if (madeCheckOut) created.push("check_out");
       }
     }
 
@@ -2047,17 +2073,19 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
       if (dueDateStr < todayStr) {
         const property = propertyMap.get(task.propertyId);
         const propName = property?.name ?? `Property #${task.propertyId}`;
-        await storage.createNotification({
+        const madeOverdue = await dedupe("overdue_task", `"${task.title}" at ${propName} is overdue.`, async () => storage.createNotification({
           type: "overdue_task",
           title: "Overdue Housekeeping Task",
           message: `"${task.title}" at ${propName} is overdue.`,
           link: "/housekeeping",
           isRead: 0,
           createdAt: now.toISOString(),
-        });
-        created.push("overdue_task");
-        const emailData = buildOverdueTaskEmail(task.title, propName, dueDateStr);
-        trySendNotificationEmail(emailData, "overdue_task");
+          }));
+        if (madeOverdue) {
+          created.push("overdue_task");
+          const emailData = buildOverdueTaskEmail(task.title, propName, dueDateStr);
+          trySendNotificationEmail(emailData, "overdue_task");
+        }
       }
     }
 
