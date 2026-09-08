@@ -6,3 +6,6 @@ vite.config.ts.*
 *.tar.gz
 # secrets
 .env
+
+# user-uploaded media (lives on disk, not in git)
+uploads/

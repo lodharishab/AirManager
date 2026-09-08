@@ -57,12 +57,21 @@ export function GalleryDetailDialog({ open, onOpenChange, image, onImageUpdate, 
       <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden">
         <div>
           <div className="relative aspect-video bg-muted">
-            <img
-              src={image.imageUrl}
-              alt={image.title || "Gallery image"}
-              className="object-contain w-full h-full"
-              onError={(e) => { (e.target as HTMLImageElement).src = "/property-1.jpg"; }}
-            />
+            {/\.(mp4|webm|mov|m4v)(\?|$)/i.test(image.imageUrl) ? (
+              <video
+                src={image.imageUrl}
+                controls
+                playsInline
+                className="object-contain w-full h-full"
+              />
+            ) : (
+              <img
+                src={image.imageUrl}
+                alt={image.title || "Gallery image"}
+                className="object-contain w-full h-full"
+                onError={(e) => { (e.target as HTMLImageElement).src = "/property-1.jpg"; }}
+              />
+            )}
           </div>
           <div className="p-5 space-y-4">
             <div className="flex items-start justify-between">

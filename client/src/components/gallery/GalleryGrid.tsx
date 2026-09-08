@@ -42,14 +42,23 @@ export function GalleryGrid({ images, onOpenDetail, onOpenEdit, onDelete, onStar
           onClick={() => onOpenDetail(img)}
         >
           <div className="relative aspect-square overflow-hidden bg-muted">
-            <img
-              src={img.imageUrl}
-              alt={img.title || "Gallery image"}
-              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/property-1.jpg";
-              }}
-            />
+            {/\.(mp4|webm|mov|m4v)(\?|$)/i.test(img.imageUrl) ? (
+              <video
+                src={img.imageUrl}
+                muted
+                playsInline
+                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <img
+                src={img.imageUrl}
+                alt={img.title || "Gallery image"}
+                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/property-1.jpg";
+                }}
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
