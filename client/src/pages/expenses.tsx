@@ -130,7 +130,7 @@ export default function Expenses() {
   }, [allExpenses]);
 
   const filteredExpenses = useMemo(() => {
-    let filtered = allExpenses.filter((expense) => {
+    const filtered = allExpenses.filter((expense) => {
       const matchesSearch =
         (expense.description || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = categoryFilter === "all" || expense.category === categoryFilter;

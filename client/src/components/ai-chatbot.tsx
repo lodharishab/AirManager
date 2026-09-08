@@ -79,7 +79,7 @@ export default function AIChatbot() {
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -104,7 +104,7 @@ export default function AIChatbot() {
                 return updated;
               });
             }
-          } catch {}
+          } catch { /* SSE line parse or delete failures are non-fatal */ }
         }
       }
     } catch (error) {
@@ -128,7 +128,7 @@ export default function AIChatbot() {
     if (conversationId) {
       try {
         await apiRequest("DELETE", `/api/ai-chat/conversations/${conversationId}`);
-      } catch {}
+      } catch { /* cleanup delete failure is non-fatal */ }
     }
     setMessages([]);
     setConversationId(null);

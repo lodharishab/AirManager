@@ -19,7 +19,7 @@ function getSystemTheme(): Theme {
 function hasStoredPreference(): boolean {
   try {
     return localStorage.getItem("theme") !== null;
-  } catch {
+  } catch { /* localStorage unavailable */
     return false;
   }
 }
@@ -29,7 +29,7 @@ function getInitialTheme(): Theme {
     try {
       const stored = localStorage.getItem("theme") as Theme | null;
       if (stored === "dark" || stored === "light") return stored;
-    } catch {}
+    } catch { /* localStorage unavailable (private mode) - use system theme */ }
   }
   return getSystemTheme();
 }
@@ -43,7 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.remove("dark", "light");
     root.classList.add(theme);
     if (userExplicitlySet.current) {
-      try { localStorage.setItem("theme", theme); } catch {}
+      try { localStorage.setItem("theme", theme); } catch { /* storage unavailable */ }
     }
   }, [theme]);
 
@@ -64,7 +64,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.add("theme-transition");
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
-      try { localStorage.setItem("theme", next); } catch {}
+      try { localStorage.setItem("theme", next); } catch { /* storage unavailable */ }
       return next;
     });
     setTimeout(() => root.classList.remove("theme-transition"), 350);

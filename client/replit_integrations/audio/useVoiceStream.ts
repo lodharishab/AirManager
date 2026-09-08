@@ -44,7 +44,7 @@ export function useVoiceStream(callbacks: StreamCallbacks = {}) {
       let buffer = "";
       let fullTranscript = "";
 
-      while (true) {
+      for (;;) {
         const { done, value } = await streamReader.read();
         if (done) break;
 

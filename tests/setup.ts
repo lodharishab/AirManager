@@ -38,7 +38,13 @@ beforeAll(async () => {
         bathrooms INTEGER DEFAULT 1, max_guests INTEGER DEFAULT 2, square_feet INTEGER,
         amenities TEXT[], check_in_time TEXT DEFAULT '14:00', check_out_time TEXT DEFAULT '11:00',
         minimum_stay INTEGER DEFAULT 1, house_rules TEXT, neighborhood TEXT,
-        booking_mode TEXT NOT NULL DEFAULT 'whole', deleted_at TEXT
+        booking_mode TEXT NOT NULL DEFAULT 'whole', ical_token TEXT,
+        currency TEXT NOT NULL DEFAULT 'USD', deleted_at TEXT,
+        CONSTRAINT properties_name_address_unique UNIQUE (name, address)
+      );
+      CREATE TABLE "${TEST_SCHEMA}".guests (
+        id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT, phone TEXT,
+        nationality TEXT, notes TEXT, tags TEXT[], created_at TEXT NOT NULL
       );
       CREATE TABLE "${TEST_SCHEMA}".rooms (
         id SERIAL PRIMARY KEY,
@@ -55,7 +61,15 @@ beforeAll(async () => {
         property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
         guest_name TEXT NOT NULL, check_in TEXT NOT NULL, check_out TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'upcoming', total_amount INTEGER NOT NULL,
-        room_id INTEGER, room_count INTEGER, notes TEXT, deleted_at TEXT
+        guest_id INTEGER REFERENCES "${TEST_SCHEMA}".guests(id),
+        room_id INTEGER, room_count INTEGER, notes TEXT,
+        source TEXT NOT NULL DEFAULT 'manual', deleted_at TEXT,
+        CONSTRAINT bookings_property_dates_unique UNIQUE (property_id, check_in, check_out)
+      );
+      CREATE TABLE "${TEST_SCHEMA}".external_calendars (
+        id SERIAL PRIMARY KEY,
+        property_id INTEGER NOT NULL REFERENCES "${TEST_SCHEMA}".properties(id) ON DELETE CASCADE,
+        name TEXT NOT NULL, url TEXT NOT NULL, last_synced_at TEXT
       );
       CREATE TABLE "${TEST_SCHEMA}".conversations (
         id SERIAL PRIMARY KEY, guest_name TEXT NOT NULL, property_name TEXT NOT NULL,
@@ -114,7 +128,8 @@ beforeAll(async () => {
         email_notifications BOOLEAN NOT NULL DEFAULT true,
         push_notifications BOOLEAN NOT NULL DEFAULT true,
         booking_alerts BOOLEAN NOT NULL DEFAULT true,
-        message_alerts BOOLEAN NOT NULL DEFAULT true
+        message_alerts BOOLEAN NOT NULL DEFAULT true,
+        notification_email TEXT
       );
     `;
     await client.query(tablesDDL);
@@ -133,7 +148,8 @@ afterEach(async () => {
   const tables = [
     "user_preferences", "notifications", "housekeeping_tasks", "reviews",
     "enquiries", "expenses", "gallery_images", "revenue_data", "messages",
-    "conversations", "bookings", "rooms", "property_links", "properties", "users",
+    "conversations", "bookings", "guests", "external_calendars", "rooms",
+    "property_links", "properties", "users",
   ];
   for (const table of tables) {
     await db.execute(sql.raw(`DELETE FROM "${TEST_SCHEMA}"."${table}"`));
@@ -143,7 +159,6 @@ afterEach(async () => {
 afterAll(async () => {
   try {
     await db.execute(sql.raw(`DROP SCHEMA IF EXISTS "${TEST_SCHEMA}" CASCADE`));
-  } catch {
-  }
+  } catch { /* schema may not exist if setup failed */ }
   await pool.end();
 });

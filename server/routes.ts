@@ -909,6 +909,9 @@ export async function registerRoutes(
   }));
 
   app.post("/api/seed-demo", asyncHandler(async (_req, res) => {
+    if (config.isProduction) {
+      return res.status(403).json({ message: "Demo seeding is disabled in production" });
+    }
     try {
       const d = (offsetDays: number) => new Date(Date.now() + offsetDays * 86400000);
       const ds = (offsetDays: number) => d(offsetDays).toISOString();

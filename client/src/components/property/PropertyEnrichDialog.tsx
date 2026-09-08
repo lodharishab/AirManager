@@ -70,7 +70,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
       const decoder = new TextDecoder();
       let accumulated = "";
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -102,7 +102,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
                 setEnrichError("AI returned invalid data format. Please try again.");
               }
             }
-          } catch {}
+          } catch { /* SSE line parse failures are non-fatal */ }
         }
       }
     } catch (err: any) {
