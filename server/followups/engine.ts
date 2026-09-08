@@ -1,4 +1,5 @@
-import { storage, type FollowUpWithMeta } from "../storage";
+import { logError } from "../logger";
+import { storage} from "../storage";
 import { aiChat, getAiConfig, type AiConfig } from "../ai/gateway";
 import type { Enquiry, FollowUpRule, Property } from "@shared/schema";
 
@@ -127,7 +128,7 @@ export function startFollowUpScheduler(): NodeJS.Timeout {
     sweepInFlight = true;
     runFollowUpSweep()
       .catch((e) => {
-        console.error("Follow-up sweep failed:", e);
+        logError("Follow-up sweep failed:", e);
       })
       .finally(() => {
         sweepInFlight = false;

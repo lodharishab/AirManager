@@ -68,7 +68,7 @@ export default function Properties() {
     monthlyRevenue: 0,
     imageUrl: "/property-1.jpg",
     bookingMode: "whole" as "whole" | "room_based",
-    currency: "USD",
+    currency: "INR",
   });
 
   const handleCreateProperty = () => {
@@ -87,7 +87,7 @@ export default function Properties() {
       onSuccess: () => {
         toast({ title: "Property created successfully" });
         setDialogOpen(false);
-        setNewProperty({ name: "", address: "", nightlyRate: 0, status: "active", occupancyRate: 0, monthlyRevenue: 0, imageUrl: "/property-1.jpg", bookingMode: "whole", currency: "USD" });
+        setNewProperty({ name: "", address: "", nightlyRate: 0, status: "active", occupancyRate: 0, monthlyRevenue: 0, imageUrl: "/property-1.jpg", bookingMode: "whole", currency: "INR" });
       },
     });
   };
@@ -264,7 +264,7 @@ export default function Properties() {
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-11 w-11 -mr-2 -mt-2 shrink-0">
+                    <Button aria-label={`Actions for ${property.name}`} variant="ghost" size="icon" className="h-11 w-11 -mr-2 -mt-2 shrink-0">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -284,7 +284,7 @@ export default function Properties() {
 
               {(property.bedrooms || property.bathrooms || property.maxGuests) && (
                 <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                  {property.bedrooms && (
+                  {property.bookingMode === "room_based" ? <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{property.totalRooms ?? "—"} rooms</span> : property.bedrooms && (
                     <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{property.bedrooms} bed{property.bedrooms > 1 ? "s" : ""}</span>
                   )}
                   {property.bathrooms && (

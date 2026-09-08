@@ -1,3 +1,4 @@
+import { logError } from "../../logger";
 import express, { type Express, type Request, type Response } from "express";
 import { chatStorage } from "../chat/storage";
 import { openai, speechToText, ensureCompatibleFormat } from "./client";
@@ -12,7 +13,7 @@ export function registerAudioRoutes(app: Express): void {
       const conversations = await chatStorage.getAllConversations();
       res.json(conversations);
     } catch (error) {
-      console.error("Error fetching conversations:", error);
+      logError("Error fetching conversations:", error);
       res.status(500).json({ error: "Failed to fetch conversations" });
     }
   });
@@ -28,7 +29,7 @@ export function registerAudioRoutes(app: Express): void {
       const messages = await chatStorage.getMessagesByConversation(id);
       res.json({ ...conversation, messages });
     } catch (error) {
-      console.error("Error fetching conversation:", error);
+      logError("Error fetching conversation:", error);
       res.status(500).json({ error: "Failed to fetch conversation" });
     }
   });
@@ -40,7 +41,7 @@ export function registerAudioRoutes(app: Express): void {
       const conversation = await chatStorage.createConversation(title || "New Chat");
       res.status(201).json(conversation);
     } catch (error) {
-      console.error("Error creating conversation:", error);
+      logError("Error creating conversation:", error);
       res.status(500).json({ error: "Failed to create conversation" });
     }
   });
@@ -52,7 +53,7 @@ export function registerAudioRoutes(app: Express): void {
       await chatStorage.deleteConversation(id);
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting conversation:", error);
+      logError("Error deleting conversation:", error);
       res.status(500).json({ error: "Failed to delete conversation" });
     }
   });
@@ -105,7 +106,7 @@ export function registerAudioRoutes(app: Express): void {
       let assistantTranscript = "";
 
       for await (const chunk of stream) {
-        const delta = chunk.choices?.[0]?.delta as any;
+        const delta = chunk.choices?.[0]?.delta as { content?: string; audio?: { data?: string; transcript?: string } };
         if (!delta) continue;
 
         if (delta?.audio?.transcript) {
@@ -124,7 +125,7 @@ export function registerAudioRoutes(app: Express): void {
       res.write(`data: ${JSON.stringify({ type: "done", transcript: assistantTranscript })}\n\n`);
       res.end();
     } catch (error) {
-      console.error("Error processing voice message:", error);
+      logError("Error processing voice message:", error);
       if (res.headersSent) {
         res.write(`data: ${JSON.stringify({ type: "error", error: "Failed to process voice message" })}\n\n`);
         res.end();

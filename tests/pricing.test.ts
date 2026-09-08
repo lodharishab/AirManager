@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { DatabaseStorage } from "../server/storage";
 import { collectMetrics, parseAiRecommendation } from "../server/pricing/engine";
-import type { Booking, Property } from "@shared/schema";
+import type { Booking} from "@shared/schema";
+
+vi.mock("../server/ai/gateway", () => ({ aiChat: vi.fn(), getAiConfig: vi.fn() }));
 
 const storage = new DatabaseStorage();
 
@@ -69,12 +71,6 @@ describe("AI Pricing engine", () => {
 });
 
 describe("AI Pricing approval flow", () => {
-  beforeAll(async () => {
-    vi.mock("../server/ai/gateway", () => ({
-      aiChat: vi.fn(),
-      getAiConfig: vi.fn(),
-    }));
-  });
 
   it("recommendation lifecycle persists through storage with proper status transitions", async () => {
     const property = await storage.createProperty({

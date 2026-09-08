@@ -9,3 +9,6 @@ vite.config.ts.*
 
 # user-uploaded media (lives on disk, not in git)
 uploads/
+
+.env.test
+._*

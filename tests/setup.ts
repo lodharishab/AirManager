@@ -1,24 +1,15 @@
+import { config as loadTestEnv } from "dotenv";
+import { readFileSync } from "fs";
 import { afterEach, afterAll } from "vitest";
 import { execFileSync } from "child_process";
-import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { parse } from "dotenv";
 import { sql } from "drizzle-orm";
 import pg from "pg";
-import type { Pool } from "pg";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import type * as schema from "../shared/schema";
 
-let databaseUrl = process.env.DATABASE_URL || "";
-if (!databaseUrl) {
-  try {
-    databaseUrl = parse(readFileSync(".env")).DATABASE_URL || "";
-  } catch {
-    // The environment assertion below reports the actionable error.
-  }
-}
-const BASE_DB_URL = databaseUrl;
+loadTestEnv({ path: ".env.test", quiet: true });
+process.env.SESSION_SECRET ||= "isolated-test-session-secret";
+const BASE_DB_URL = process.env.DATABASE_URL || "";
 const TEST_DB_NAME = `airmanager_test_${process.pid}`;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -70,6 +61,10 @@ async function publicTables(client: pg.PoolClient): Promise<string[]> {
   );
   return res.rows.map((r) => r.tablename);
 }
+
+await pool.query(readFileSync(path.join(REPO_ROOT, "scripts/migrations/20260908-integrity.sql"), "utf8"));
+
+await pool.query(readFileSync(path.join(REPO_ROOT, "scripts/migrations/20260908-property-notes.sql"), "utf8"));
 
 const client = await pool.connect();
 const tablesForCleanup = await publicTables(client);

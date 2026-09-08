@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Send, MoreVertical, Phone, Video, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Conversation } from "@shared/schema";
+
 
 export default function Messages() {
   const { data: conversations, isLoading: convsLoading } = useConversations();
@@ -45,7 +45,7 @@ export default function Messages() {
       <div className="h-[calc(100vh-8rem)] animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col">
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight font-serif text-primary">Messages</h1>
-          <p className="text-muted-foreground mt-1">No conversations yet.</p>
+          <p className="text-muted-foreground mt-1">No guest messages have been received. Conversations will appear here when your messaging channel sends them to AirManager.</p>
         </div>
       </div>
     );

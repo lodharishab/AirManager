@@ -1,3 +1,4 @@
+import type { GalleryImage } from "@shared/schema";
 import { useState } from "react";
 import {
   useGalleryImages,
@@ -36,7 +37,7 @@ export default function Gallery() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
-  const [selectedImage, setSelectedImage] = useState<any>(null);
+  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const [editData, setEditData] = useState({ title: "", tags: "", starRating: 0, propertyId: 0 });
 
   const allTags = Array.from(
@@ -63,7 +64,7 @@ export default function Gallery() {
     updateImage.mutate({ id: imageId, starRating: rating });
   };
 
-  const openEdit = (img: any) => {
+  const openEdit = (img: GalleryImage) => {
     setSelectedImage(img);
     setEditData({
       title: img.title || "",
@@ -87,7 +88,7 @@ export default function Gallery() {
     setDeleteTargetId(null);
   };
 
-  const openDetail = (img: any) => {
+  const openDetail = (img: GalleryImage) => {
     setSelectedImage(img);
     setDetailDialogOpen(true);
   };

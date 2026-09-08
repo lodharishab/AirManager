@@ -1,3 +1,4 @@
+import type { GalleryImage } from "@shared/schema";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -7,16 +8,7 @@ import {
 import { useUpdateGalleryImage } from "@/lib/api";
 import { Star, Tag, X } from "lucide-react";
 
-interface GalleryImage {
-  id: number;
-  imageUrl: string;
-  title?: string | null;
-  tags?: string[] | null;
-  starRating?: number | null;
-  propertyId?: number | null;
-  source?: string | null;
-  createdAt?: string | null;
-}
+
 
 interface GalleryDetailDialogProps {
   open: boolean;

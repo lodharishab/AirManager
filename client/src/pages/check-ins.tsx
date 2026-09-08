@@ -1,13 +1,14 @@
+import { businessToday } from "@shared/booking-rules";
 import { useMemo } from "react";
 import { useCheckIns, useProperties, useUpdateBooking } from "@/lib/api";
 import { format, parseISO, isToday, isBefore, startOfDay } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, LogIn, LogOut, Clock, AlertTriangle, StickyNote, Building2, Moon, DollarSign } from "lucide-react";
+import { Loader2, LogIn, LogOut, Clock, AlertTriangle, StickyNote, Building2, Moon, IndianRupee } from "lucide-react";
 import { formatCurrency } from "@shared/currency";
 import { useToast } from "@/hooks/use-toast";
-import type { Booking, Property } from "@shared/schema";
+import type { Booking } from "@shared/schema";
 
 export default function CheckIns() {
   const { data: checkInData, isLoading } = useCheckIns();
@@ -19,13 +20,15 @@ export default function CheckIns() {
     const map: Record<number, { name: string; checkInTime: string; checkOutTime: string; currency: string }> = {};
     const properties = propertiesResult?.data || [];
     if (properties) {
-      properties.forEach(p => { map[p.id] = { name: p.name, checkInTime: p.checkInTime || "14:00", checkOutTime: p.checkOutTime || "11:00", currency: p.currency || "USD" }; });
+      properties.forEach(p => { map[p.id] = { name: p.name, checkInTime: p.checkInTime || "14:00", checkOutTime: p.checkOutTime || "11:00", currency: p.currency || "INR" }; });
     }
     return map;
   }, [propertiesResult]);
 
   const handleStatusChange = (bookingId: number, newStatus: string) => {
+    if (!window.confirm(newStatus === "checked_out" ? "Confirm this guest has checked out?" : newStatus === "checked_in" ? "Confirm this guest has arrived?" : "Undo this status change?")) return;
     updateBooking.mutate({ id: bookingId, status: newStatus }, {
+      onError: (error) => toast({ title: "Could not change booking", description: error.message, variant: "destructive" }),
       onSuccess: () => {
         toast({ title: `Booking marked as ${newStatus.replace("_", " ")}` });
       },
@@ -112,7 +115,7 @@ export default function CheckIns() {
                 <span>{nights} night{nights !== 1 ? "s" : ""}</span>
               </div>
               <div className="flex items-center gap-1 text-muted-foreground">
-                <DollarSign size={12} />
+                <IndianRupee size={12} />
                 <span>{formatCurrency(booking.totalAmount, propertiesMap[booking.propertyId]?.currency)}</span>
               </div>
               <Badge variant="outline" className={`text-[10px] uppercase tracking-wider w-fit ${getStatusBadge(booking.status)}`}>
@@ -123,7 +126,7 @@ export default function CheckIns() {
             {booking.notes && (
               <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg px-2.5 py-1.5">
                 <StickyNote size={12} className="shrink-0 mt-0.5 text-amber-400" />
-                <span data-testid={`text-notes-${booking.id}`}>{booking.notes}</span>
+                <span data-testid={`text-notes-${booking.id}`}><strong>Internal note: </strong>{booking.notes}</span>
               </div>
             )}
 
@@ -136,13 +139,16 @@ export default function CheckIns() {
           </div>
 
           <div className="flex flex-col gap-1.5 shrink-0">
-            {type === "arrival" && booking.status !== "checked_in" && (
+            {type === "departure" && booking.status === "upcoming" && <span className="text-xs text-muted-foreground">Not checked in</span>}
+            {type === "departure" && booking.status === "checked_out" && <Button variant="outline" size="sm" disabled={updateBooking.isPending} onClick={() => handleStatusChange(booking.id, "checked_in")}>Undo checkout</Button>}
+            {type === "arrival" && ["checked_in", "current"].includes(booking.status) && <Button variant="outline" size="sm" disabled={updateBooking.isPending} onClick={() => handleStatusChange(booking.id, "upcoming")}>Undo check-in</Button>}
+            {type === "arrival" && booking.status === "upcoming" && (
               <Button
                 data-testid={`button-check-in-${booking.id}`}
                 size="sm"
                 className="text-xs text-primary-foreground min-h-[44px]"
                 onClick={() => handleStatusChange(booking.id, "checked_in")}
-                disabled={updateBooking.isPending}
+                disabled={updateBooking.isPending || (type === "arrival" && booking.checkIn > businessToday())}
               >
                 {updateBooking.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <LogIn size={14} className="mr-1" />}
                 Check In
@@ -153,7 +159,7 @@ export default function CheckIns() {
                 Checked In
               </Badge>
             )}
-            {type === "departure" && !["checked_out", "completed"].includes(booking.status) && (
+            {type === "departure" && ["checked_in", "current"].includes(booking.status) && (
               <Button
                 data-testid={`button-check-out-${booking.id}`}
                 size="sm"

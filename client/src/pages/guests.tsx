@@ -1,8 +1,8 @@
+import { formatCurrency } from "@shared/currency";
 import { useState, useEffect } from "react";
 import { useGuests, useCreateGuest, useDeleteGuest, useProperties } from "@/lib/api";
-import { formatCurrency } from "@shared/currency";
 import { format, parseISO } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -49,11 +49,11 @@ export default function Guests() {
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
   });
-  const { data: propertiesResult } = useProperties({ page: 1, limit: 10000 });
-  const primaryCurrency = propertiesResult?.data[0]?.currency || "USD";
 
+  const { data: propertiesResult } = useProperties({ page: 1, limit: 10000 });
+  const primaryCurrency = propertiesResult?.data[0]?.currency || "INR";
   const createGuest = useCreateGuest();
-  const deleteGuest = useDeleteGuest();
+  const _deleteGuest = useDeleteGuest();
 
   const [newGuest, setNewGuest] = useState({
     name: "",
@@ -211,7 +211,7 @@ export default function Guests() {
         </div>
 
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[800px]">
             <TableHeader className="bg-secondary/20">
               <TableRow className="hover:bg-transparent border-b-border">
                 <TableHead className="w-[220px]">Guest</TableHead>
@@ -230,6 +230,7 @@ export default function Guests() {
                     key={guest.id}
                     data-testid={`row-guest-${guest.id}`}
                     className="hover:bg-muted/30 transition-colors cursor-pointer border-b-border/50"
+                    role="link" tabIndex={0} aria-label={`View ${guest.name}`} onKeyDown={e => { if (e.key === "Enter") setLocation(`/guests/${guest.id}`); }}
                     onClick={() => setLocation(`/guests/${guest.id}`)}
                   >
                     <TableCell className="font-medium">

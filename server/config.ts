@@ -1,3 +1,4 @@
+import { logWarning } from "./logger";
 interface AppConfig {
   databaseUrl: string;
   sessionSecret: string;
@@ -31,7 +32,7 @@ function validateConfig(): AppConfig {
 
   const sessionSecret = process.env.SESSION_SECRET || "airmanager-dev-secret-2024";
   if (!process.env.SESSION_SECRET) {
-    console.warn("[config] WARNING: SESSION_SECRET not set — using default dev secret. Set a strong random secret in production.");
+    logWarning("[config] WARNING: SESSION_SECRET not set — using default dev secret. Set a strong random secret in production.");
   }
 
   const portRaw = process.env.PORT || "5000";
@@ -46,13 +47,13 @@ function validateConfig(): AppConfig {
   const aiBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined;
   const aiEnabled = Boolean(aiApiKey);
   if (!aiEnabled) {
-    console.warn("[config] WARNING: AI_INTEGRATIONS_OPENAI_API_KEY not set — AI features will be unavailable.");
+    logWarning("[config] WARNING: AI_INTEGRATIONS_OPENAI_API_KEY not set — AI features will be unavailable.");
   }
 
   const googleDriveApiKey = process.env.GOOGLE_DRIVE_API_KEY || "";
   const googleDriveEnabled = Boolean(googleDriveApiKey);
   if (!googleDriveEnabled) {
-    console.warn("[config] WARNING: GOOGLE_DRIVE_API_KEY not set — Google Drive import will be unavailable.");
+    logWarning("[config] WARNING: GOOGLE_DRIVE_API_KEY not set — Google Drive import will be unavailable.");
   }
 
   const origins: string[] = [];
@@ -61,7 +62,7 @@ function validateConfig(): AppConfig {
     if (productionDomain) {
       origins.push(productionDomain);
     } else {
-      console.warn("[config] WARNING: PRODUCTION_DOMAIN not set in production — CORS will reject all cross-origin requests.");
+      logWarning("[config] WARNING: PRODUCTION_DOMAIN not set in production — CORS will reject all cross-origin requests.");
     }
   } else {
     origins.push(`http://localhost:${port}`);

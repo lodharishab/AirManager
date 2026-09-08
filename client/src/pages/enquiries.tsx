@@ -301,7 +301,7 @@ export default function Enquiries() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{property?.name || "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell max-w-[250px]">
-                        <span className="text-muted-foreground text-sm line-clamp-2">{enquiry.message || "—"}</span>
+                        <span className="text-muted-foreground text-sm whitespace-pre-wrap break-words">{enquiry.message || "—"}</span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -351,7 +351,7 @@ export default function Enquiries() {
                       </TableCell>
                       <TableCell>
                         <Button
-                          data-testid={`button-delete-enquiry-${enquiry.id}`}
+                          aria-label="Delete enquiry" data-testid={`button-delete-enquiry-${enquiry.id}`}
                           variant="ghost"
                           size="icon"
                           className="h-11 w-11 text-muted-foreground hover:text-destructive"
@@ -414,7 +414,7 @@ export default function Enquiries() {
                     </div>
                   </div>
                   {enquiry.message && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">{enquiry.message}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{enquiry.message}</p>
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{format(parseISO(enquiry.createdAt), "MMM d, yyyy")}</span>
@@ -430,7 +430,7 @@ export default function Enquiries() {
                         </a>
                       )}
                       <Button
-                        data-testid={`button-delete-enquiry-mobile-${enquiry.id}`}
+                        aria-label="Delete enquiry" data-testid={`button-delete-enquiry-mobile-${enquiry.id}`}
                         variant="ghost"
                         size="icon"
                         className="h-11 w-11 text-muted-foreground hover:text-destructive"

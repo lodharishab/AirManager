@@ -18,7 +18,7 @@ interface PropertyBookingsProps {
   currency?: string;
 }
 
-export function PropertyBookings({ bookings, currency = "USD" }: PropertyBookingsProps) {
+export function PropertyBookings({ bookings, currency = "INR" }: PropertyBookingsProps) {
   if (!bookings || bookings.length === 0) return null;
 
   return (
@@ -31,7 +31,7 @@ export function PropertyBookings({ bookings, currency = "USD" }: PropertyBooking
       <CardContent>
         <div className="space-y-3">
           {bookings.map((booking) => {
-            const isExternal = booking.source && booking.source !== "manual";
+            const isExternal = booking.status === "blocked";
             const bookingStatus = isExternal
               ? "bg-orange-500/15 text-orange-400"
               : booking.status === "current"
@@ -62,12 +62,12 @@ export function PropertyBookings({ bookings, currency = "USD" }: PropertyBooking
                     {new Date(booking.checkIn).toLocaleDateString("en-US", { day: "numeric", month: "short" })} — {new Date(booking.checkOut).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
                   {!isExternal && (
                     <span className="font-semibold text-sm flex items-center" data-testid={`text-amount-${booking.id}`}>{formatCurrency(booking.totalAmount, currency)}</span>
                   )}
                   <Badge className={`${bookingStatus} text-xs uppercase`} data-testid={`badge-status-${booking.id}`}>
-                    {isExternal ? "blocked" : booking.status}
+                    {booking.status.replaceAll("_", " ")}
                   </Badge>
                 </div>
               </div>

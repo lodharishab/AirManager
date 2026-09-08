@@ -116,8 +116,8 @@ function RatingDistribution({ reviews }: { reviews: Review[] }) {
 export default function Reviews() {
   const { data: reviewsResult, isLoading } = useReviews();
   const { data: propertiesResult } = useProperties({ page: 1, limit: 10000 });
-  const reviews = reviewsResult?.data || [];
-  const properties = propertiesResult?.data || [];
+  const reviews = useMemo(() => reviewsResult?.data || [], [reviewsResult]);
+  const properties = useMemo(() => propertiesResult?.data || [], [propertiesResult]);
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();

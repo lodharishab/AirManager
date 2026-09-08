@@ -1,3 +1,4 @@
+import { formatCurrency } from "@shared/currency";
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGuest, useUpdateGuest, useDeleteGuest, useProperties } from "@/lib/api";
@@ -14,7 +15,7 @@ import {
   Phone,
   Globe,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Star,
   Edit2,
   Trash2,
@@ -29,7 +30,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@shared/currency";
 
 export default function GuestDetail() {
   const [, params] = useRoute("/guests/:id");
@@ -52,7 +52,7 @@ export default function GuestDetail() {
   });
 
   const properties = propertiesResult?.data || [];
-  const primaryCurrency = properties[0]?.currency || "USD";
+  const primaryCurrency = properties[0]?.currency || "INR";
 
   const startEditing = () => {
     if (!guest) return;
@@ -145,7 +145,7 @@ export default function GuestDetail() {
                 {!editing ? (
                   <>
                     <Button
-                      data-testid="button-edit-guest"
+                      aria-label="Edit guest" data-testid="button-edit-guest"
                       variant="ghost"
                       size="sm"
                       onClick={startEditing}
@@ -153,7 +153,7 @@ export default function GuestDetail() {
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     <Button
-                      data-testid="button-delete-guest"
+                      aria-label="Delete guest" data-testid="button-delete-guest"
                       variant="ghost"
                       size="sm"
                       className="text-destructive hover:text-destructive"
@@ -311,7 +311,7 @@ export default function GuestDetail() {
                 </div>
                 <div>
                   <div className="flex items-center justify-center mb-1">
-                    <DollarSign className="h-4 w-4 text-primary" />
+                    <IndianRupee className="h-4 w-4 text-primary" />
                   </div>
                   <p data-testid="text-guest-total-spent" className="text-2xl font-bold">
                     {formatCurrency(guest.totalSpent || 0, primaryCurrency)}

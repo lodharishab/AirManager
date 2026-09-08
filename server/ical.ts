@@ -16,7 +16,7 @@ function escapeIcalText(text: string): string {
     .replace(/\n/g, "\\n");
 }
 
-export function generateIcal(bookings: Booking[], property: Property, baseUrl: string): string {
+export function generateIcal(bookings: Booking[], property: Property, _baseUrl: string): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

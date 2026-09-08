@@ -6,8 +6,6 @@ import {
   Users, 
   Home, 
   CalendarCheck, 
-  ArrowUpRight,
-  ArrowDownRight,
   Loader2,
   Plus,
   Sparkles
@@ -22,7 +20,7 @@ import { useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: propertiesResult, isLoading: propsLoading } = useProperties({ page: 1, limit: 10000 });
   const { data: bookingsResult, isLoading: bookingsLoading } = useBookings({ page: 1, limit: 4 });
@@ -30,13 +28,13 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: topGuests } = useTopGuests(5);
 
-  const properties = propertiesResult?.data || [];
-  const recentBookings = bookingsResult?.data || [];
+  const properties = useMemo(() => propertiesResult?.data || [], [propertiesResult]);
+  const recentBookings = useMemo(() => bookingsResult?.data || [], [bookingsResult]);
 
   const { primaryCurrency, hasMixedCurrencies, currencyCodes } = useMemo(() => {
-    const codes = Array.from(new Set(properties.map(p => p.currency || "USD")));
+    const codes = Array.from(new Set(properties.map(p => p.currency || "INR")));
     return {
-      primaryCurrency: codes[0] || "USD",
+      primaryCurrency: codes[0] || "INR",
       hasMixedCurrencies: codes.length > 1,
       currencyCodes: codes,
     };
@@ -54,10 +52,10 @@ export default function Dashboard() {
           });
           queryClient.invalidateQueries();
           setLocation("/");
-        } catch (error: any) {
+        } catch (error: unknown) {
           toast({
             title: "Failed to load demo data",
-            description: error.message,
+            description: (error instanceof Error ? error.message : String(error)),
             variant: "destructive",
           });
         }
@@ -126,7 +124,7 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Booking Value</p>
                 <p data-testid="text-total-revenue" className="text-3xl font-bold font-serif">{formatCurrency(stats?.totalMonthlyRevenue || 0, primaryCurrency)}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
@@ -137,13 +135,7 @@ export default function Dashboard() {
               {hasMixedCurrencies ? (
                 <span className="text-muted-foreground text-xs">Mixed currencies: {currencyCodes.join(", ")}</span>
               ) : (
-                <>
-                  <span className="text-success flex items-center font-medium">
-                    <ArrowUpRight size={16} className="mr-1" />
-                    12.5%
-                  </span>
-                  <span className="text-muted-foreground ml-2">vs last month</span>
-                </>
+                <span className="text-muted-foreground text-xs">All reservation dates; excludes cancellations and blocked dates</span>
               )}
             </div>
           </CardContent>
@@ -161,11 +153,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm">
-              <span className="text-success flex items-center font-medium">
-                <ArrowUpRight size={16} className="mr-1" />
-                4.2%
-              </span>
-              <span className="text-muted-foreground ml-2">vs last month</span>
+              <span className="text-muted-foreground text-xs">Booked room-nights this calendar month</span>
             </div>
           </CardContent>
         </Card>
@@ -315,7 +303,7 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <p className="font-medium text-sm">{guest.name}</p>
-                        <p className="text-xs text-muted-foreground">{guest.totalStays} stays</p>
+                        <p className="text-xs text-muted-foreground">{guest.totalStays} {guest.totalStays === 1 ? "stay" : "stays"}</p>
                       </div>
                     </div>
                     <div className="text-right">

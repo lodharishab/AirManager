@@ -24,7 +24,7 @@ interface PropertyEnrichDialogProps {
   property: {
     id: number;
     links?: PropertyLink[] | null;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -34,7 +34,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
 
   const [enriching, setEnriching] = useState(false);
   const [enrichStreamText, setEnrichStreamText] = useState("");
-  const [enrichResult, setEnrichResult] = useState<Record<string, any> | null>(null);
+  const [enrichResult, setEnrichResult] = useState<Record<string, unknown> | null>(null);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
   const [applyingFields, setApplyingFields] = useState(false);
@@ -55,7 +55,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
 
       if (!response.ok) {
         const err = await response.json();
-        setEnrichError(err.message || "Failed to start AI enrichment");
+        setEnrichError((err instanceof Error ? err.message : String(err)) || "Failed to start AI enrichment");
         setEnriching(false);
         return;
       }
@@ -105,8 +105,8 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
           } catch { /* SSE line parse failures are non-fatal */ }
         }
       }
-    } catch (err: any) {
-      setEnrichError(err.message || "Connection error");
+    } catch (err: unknown) {
+      setEnrichError((err instanceof Error ? err.message : String(err)) || "Connection error");
     } finally {
       setEnriching(false);
     }
@@ -116,7 +116,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
     if (!property || !enrichResult || selectedFields.size === 0) return;
     setApplyingFields(true);
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     Array.from(selectedFields).forEach(field => {
       if (enrichResult[field] !== undefined) {
         updateData[field] = enrichResult[field];
@@ -149,7 +149,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
     });
   };
 
-  const formatFieldValue = (key: string, value: any): string => {
+  const formatFieldValue = (key: string, value: unknown): string => {
     if (Array.isArray(value)) return value.join(", ");
     if (typeof value === "number" && key === "nightlyRate") return value.toLocaleString();
     if (typeof value === "number") return String(value);
@@ -227,7 +227,7 @@ export function PropertyEnrichDialog({ open, onOpenChange, property }: PropertyE
 
         {enrichResult && !enriching && (
           <div className="space-y-4 pt-2">
-            {enrichResult.summary && (
+            {typeof enrichResult.summary === "string" && enrichResult.summary && (
               <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                 <p className="text-sm text-muted-foreground leading-relaxed">{enrichResult.summary}</p>
               </div>

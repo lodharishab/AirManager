@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useBookings, useProperties, useCreateBooking, useRoomsByProperty, useAllRooms, useGuests, useCreateGuest } from "@/lib/api";
 import { format, parseISO } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Calendar as CalendarIcon, Download, Plus, Loader2, FileText } from "lucide-react";
+import { Search, Download, Plus, Loader2, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -163,8 +163,8 @@ export default function Bookings() {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
-    if (isRoomBased && (!newBooking.roomId || !newBooking.roomCount)) {
-      toast({ title: "Please select a room type and number of rooms", variant: "destructive" });
+    if (isRoomBased && (!newBooking.roomCount)) {
+      toast({ title: "Please enter the number of rooms", variant: "destructive" });
       return;
     }
 
@@ -174,7 +174,8 @@ export default function Bookings() {
         const newGuestData = await createGuest.mutateAsync({ name: newBooking.guestName });
         guestId = newGuestData.id;
       } catch {
-        // continue without guest link
+        toast({ title: "Could not save the guest. Please try again.", variant: "destructive" });
+        return;
       }
     }
 
@@ -182,8 +183,8 @@ export default function Bookings() {
       propertyId: newBooking.propertyId,
       guestName: newBooking.guestName,
       guestId,
-      checkIn: new Date(newBooking.checkIn).toISOString(),
-      checkOut: new Date(newBooking.checkOut).toISOString(),
+      checkIn: newBooking.checkIn,
+      checkOut: newBooking.checkOut,
       status: newBooking.status,
       totalAmount: newBooking.totalAmount,
       roomId: isRoomBased ? newBooking.roomId : null,
@@ -308,16 +309,17 @@ export default function Bookings() {
                     <div className="space-y-2">
                       <Label>Room Type</Label>
                       <Select
-                        value={newBooking.roomId ? String(newBooking.roomId) : ""}
-                        onValueChange={(val) => setNewBooking(b => ({ ...b, roomId: Number(val), roomCount: b.roomCount || 1 }))}
+                        value={newBooking.roomId ? String(newBooking.roomId) : "unassigned"}
+                        onValueChange={(val) => setNewBooking(b => ({ ...b, roomId: val === "unassigned" ? null : Number(val), roomCount: b.roomCount || 1 }))}
                       >
                         <SelectTrigger data-testid="select-room-type">
                           <SelectValue placeholder="Select a room type" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="unassigned">Assign room types later</SelectItem>
                           {propertyRooms.map(r => (
                             <SelectItem key={r.id} value={String(r.id)}>
-                              {r.roomType} — {formatCurrency(r.nightlyRate, selectedProperty?.currency)}/night ({r.roomCount} available)
+                              {r.roomType} — {formatCurrency(r.nightlyRate, selectedProperty?.currency)}/night ({r.roomCount} total)
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -329,7 +331,7 @@ export default function Bookings() {
                         data-testid="input-booking-room-count"
                         type="number"
                         min={1}
-                        max={selectedRoom?.roomCount || 1}
+                        max={selectedRoom?.roomCount || propertyRooms.reduce((n, r) => n + r.roomCount, 0)}
                         value={newBooking.roomCount || 1}
                         onChange={(e) => setNewBooking(b => ({ ...b, roomCount: Number(e.target.value) }))}
                       />
@@ -369,7 +371,7 @@ export default function Bookings() {
                     value={newBooking.totalAmount || ""}
                     onChange={(e) => setNewBooking(b => ({ ...b, totalAmount: Number(e.target.value) }))}
                     placeholder="e.g. 5000"
-                    readOnly={isRoomBased && !!selectedRoom}
+                    min={0}
                   />
                 </div>
                 <div className="space-y-2">
@@ -411,7 +413,7 @@ export default function Bookings() {
             />
           </div>
           
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {['all', 'current', 'upcoming', 'checked_in', 'checked_out', 'completed', 'cancelled'].map(status => (
               <Button 
                 key={status}

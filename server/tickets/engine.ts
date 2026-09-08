@@ -1,3 +1,4 @@
+import { logError } from "../logger";
 import { storage } from "../storage";
 import { aiChat, getAiConfig, type AiConfig } from "../ai/gateway";
 import type { Enquiry, Review } from "@shared/schema";
@@ -16,7 +17,7 @@ interface TriageDecision {
 }
 
 function fallbackDecision(text: string): TriageDecision {
-  const t = text.toLowerCase();
+  const _t = text.toLowerCase();
   let priority: TriageDecision["priority"] = "normal";
   if (/\b(urgent|emergency|locked out|lockout|broken|leak|no power|no water)\b/.test(text)) {
     priority = "urgent";
@@ -58,7 +59,7 @@ async function triageText(text: string, cfg: AiConfig): Promise<TriageDecision> 
   }
 }
 
-async function ticketExists(channel: string, sourceRefId: number): Promise<boolean> {
+async function _ticketExists(channel: string, sourceRefId: number): Promise<boolean> {
   return storage.hasTicketForSource(channel, sourceRefId);
 }
 
@@ -192,7 +193,7 @@ export function startTicketTriageScheduler(): NodeJS.Timeout {
     sweepInFlight = true;
     runTriage()
       .catch((e) => {
-        console.error("Ticket triage sweep failed:", e);
+        logError("Ticket triage sweep failed:", e);
       })
       .finally(() => {
         sweepInFlight = false;

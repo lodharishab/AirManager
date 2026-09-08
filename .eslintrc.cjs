@@ -26,5 +26,6 @@ module.exports = {
     "react-hooks/exhaustive-deps": "warn",
     "no-console": ["warn", { allow: ["warn", "error"] }],
   },
+  overrides: [{ files: ["script/**/*.ts", "scripts/**/*.ts", "server/logger.ts", "vite-plugin-meta-images.ts"], rules: { "no-console": "off" } }],
   ignorePatterns: ["dist", "node_modules", "*.cjs"],
 };

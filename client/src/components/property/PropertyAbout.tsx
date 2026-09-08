@@ -4,6 +4,7 @@ import { AMENITY_ICONS } from "./constants";
 
 interface PropertyAboutProps {
   property: {
+    internalNotes?: string | null;
     description?: string | null;
     neighborhood?: string | null;
     amenities?: string[] | null;
@@ -14,6 +15,7 @@ interface PropertyAboutProps {
 export function PropertyAbout({ property }: PropertyAboutProps) {
   return (
     <>
+      {property.internalNotes && <details className="rounded-xl border p-4"><summary className="cursor-pointer font-medium">Internal notes — pending verification</summary><p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{property.internalNotes}</p></details>}
       {property.description && (
         <Card className="rounded-2xl border-border/50">
           <CardHeader className="pb-3">

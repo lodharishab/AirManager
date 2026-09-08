@@ -1,7 +1,7 @@
+import { useProperty } from "@/lib/api";
 import { useMemo } from "react";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useProperty } from "@/lib/api";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft } from "lucide-react";
@@ -17,7 +17,7 @@ function generateInvoiceNumber(bookingId: number, checkInDate: string): string {
 }
 
 function formatAmount(amount: number, currency?: string): string {
-  return formatCurrency(amount, currency || "USD");
+  return formatCurrency(amount, currency || "INR");
 }
 
 export default function Invoice() {

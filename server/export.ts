@@ -5,7 +5,7 @@ function formatINR(amount: number): string {
   return `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(amount)}`;
 }
 
-function escapeCSV(value: string | number | null | undefined): string {
+function escapeCSV(value: unknown): string {
   if (value === null || value === undefined) return "";
   let str = String(value);
   if (typeof value === "string" && /^[=+\-@\t\r]/.test(str)) {
@@ -17,7 +17,7 @@ function escapeCSV(value: string | number | null | undefined): string {
   return str;
 }
 
-export function arrayToCSV(rows: Record<string, any>[], headers?: string[], defaultHeaders?: string[]): string {
+export function arrayToCSV(rows: Record<string, unknown>[], headers?: string[], defaultHeaders?: string[]): string {
   const keys = headers || (rows.length > 0 ? Object.keys(rows[0]) : defaultHeaders || []);
   if (keys.length === 0) return "";
   const headerLine = keys.map(escapeCSV).join(",");
@@ -30,7 +30,7 @@ export function arrayToCSV(rows: Record<string, any>[], headers?: string[], defa
 export function formatBookingsForCSV(
   bookings: Booking[],
   properties: Property[]
-): Record<string, any>[] {
+): Record<string, unknown>[] {
   const propertyMap = new Map(properties.map(p => [p.id, p.name]));
   return bookings.map(b => ({
     "ID": b.id,
@@ -47,7 +47,7 @@ export function formatBookingsForCSV(
 export function formatExpensesForCSV(
   expenses: Expense[],
   properties: Property[]
-): Record<string, any>[] {
+): Record<string, unknown>[] {
   const propertyMap = new Map(properties.map(p => [p.id, p.name]));
   return expenses.map(e => ({
     "ID": e.id,

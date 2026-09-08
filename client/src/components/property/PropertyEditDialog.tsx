@@ -1,3 +1,4 @@
+import type { InsertProperty } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +15,8 @@ import { SUPPORTED_CURRENCIES, getCurrencySymbol } from "@shared/currency";
 interface PropertyEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editData: Record<string, any>;
-  setEditData: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  editData: Partial<InsertProperty>;
+  setEditData: React.Dispatch<React.SetStateAction<Partial<InsertProperty>>>;
   onSave: () => void;
   isPending: boolean;
 }
@@ -64,7 +65,7 @@ export function PropertyEditDialog({ open, onOpenChange, editData, setEditData, 
             </div>
             <div className="space-y-2">
               <Label>Currency</Label>
-              <Select value={editData.currency || "USD"} onValueChange={(v) => setEditData(d => ({ ...d, currency: v }))}>
+              <Select value={editData.currency || "INR"} onValueChange={(v) => setEditData(d => ({ ...d, currency: v }))}>
                 <SelectTrigger data-testid="select-edit-currency"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SUPPORTED_CURRENCIES.map((c) => (
@@ -74,7 +75,7 @@ export function PropertyEditDialog({ open, onOpenChange, editData, setEditData, 
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Nightly Rate ({getCurrencySymbol(editData.currency || "USD")})</Label>
+              <Label>Nightly Rate ({getCurrencySymbol(editData.currency || "INR")})</Label>
               <Input type="number" value={editData.nightlyRate || ""} onChange={(e) => setEditData(d => ({ ...d, nightlyRate: Number(e.target.value) }))} />
             </div>
             <div className="space-y-2">

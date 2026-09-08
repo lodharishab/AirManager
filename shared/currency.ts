@@ -16,10 +16,10 @@ export type CurrencyCode = typeof SUPPORTED_CURRENCIES[number]["code"];
 const currencyMap = new Map(SUPPORTED_CURRENCIES.map(c => [c.code, c]));
 
 export function getCurrencyInfo(code: string) {
-  return currencyMap.get(code as CurrencyCode) || currencyMap.get("USD")!;
+  return currencyMap.get(code as CurrencyCode) || currencyMap.get("INR")!;
 }
 
-export function formatCurrency(amount: number, currencyCode: string = "USD"): string {
+export function formatCurrency(amount: number, currencyCode: string = "INR"): string {
   const info = getCurrencyInfo(currencyCode);
   try {
     return new Intl.NumberFormat(info.locale, {
@@ -33,7 +33,7 @@ export function formatCurrency(amount: number, currencyCode: string = "USD"): st
   }
 }
 
-export function formatCurrencyShort(amount: number, currencyCode: string = "USD"): string {
+export function formatCurrencyShort(amount: number, currencyCode: string = "INR"): string {
   const info = getCurrencyInfo(currencyCode);
   if (amount >= 1000) {
     const k = amount / 1000;
@@ -42,6 +42,6 @@ export function formatCurrencyShort(amount: number, currencyCode: string = "USD"
   return formatCurrency(amount, currencyCode);
 }
 
-export function getCurrencySymbol(currencyCode: string = "USD"): string {
+export function getCurrencySymbol(currencyCode: string = "INR"): string {
   return getCurrencyInfo(currencyCode).symbol;
 }

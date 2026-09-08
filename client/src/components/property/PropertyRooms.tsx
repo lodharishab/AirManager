@@ -24,7 +24,7 @@ interface PropertyRoomsProps {
   currency?: string;
 }
 
-export function PropertyRooms({ propertyId, rooms, currency = "USD" }: PropertyRoomsProps) {
+export function PropertyRooms({ propertyId, rooms, currency = "INR" }: PropertyRoomsProps) {
   const { toast } = useToast();
   const createRoom = useCreateRoom();
   const updateRoom = useUpdateRoom();
@@ -120,7 +120,7 @@ export function PropertyRooms({ propertyId, rooms, currency = "USD" }: PropertyR
                   <div>
                     <div className="font-medium text-sm">{room.roomType}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {room.roomCount} room{room.roomCount > 1 ? "s" : ""} · {formatCurrency(room.nightlyRate, currency)}/night
+                      {room.roomCount} room{room.roomCount > 1 ? "s" : ""} · {room.nightlyRate > 0 ? formatCurrency(room.nightlyRate, currency) : "Rate unverified"}/night
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -128,7 +128,7 @@ export function PropertyRooms({ propertyId, rooms, currency = "USD" }: PropertyR
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      data-testid={`button-edit-room-${room.id}`}
+                      aria-label="Edit room type" data-testid={`button-edit-room-${room.id}`}
                       onClick={() => {
                         setEditRoomData({ id: room.id, roomType: room.roomType, roomCount: room.roomCount, nightlyRate: room.nightlyRate });
                         setEditRoomDialogOpen(true);
@@ -140,7 +140,7 @@ export function PropertyRooms({ propertyId, rooms, currency = "USD" }: PropertyR
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-destructive"
-                      data-testid={`button-delete-room-${room.id}`}
+                      aria-label="Delete room type" data-testid={`button-delete-room-${room.id}`}
                       onClick={() => {
                         deleteRoom.mutate(
                           { id: room.id, propertyId },

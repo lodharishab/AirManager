@@ -51,13 +51,12 @@ export default function Settings() {
   const [aiApiKey, setAiApiKey] = useState("");
   const [aiModel, setAiModel] = useState("");
 
+  const savedProvider = aiSettings?.provider, savedBaseUrl = aiSettings?.baseUrl, savedModel = aiSettings?.model;
   useEffect(() => {
-    if (aiSettings) {
-      setAiProvider(aiSettings.provider);
-      setAiBaseUrl(aiSettings.baseUrl);
-      setAiModel(aiSettings.model);
-    }
-  }, [aiSettings?.provider, aiSettings?.baseUrl, aiSettings?.model]);
+    if (savedProvider !== undefined) setAiProvider(savedProvider);
+    if (savedBaseUrl !== undefined) setAiBaseUrl(savedBaseUrl);
+    if (savedModel !== undefined) setAiModel(savedModel);
+  }, [savedProvider, savedBaseUrl, savedModel]);
 
   const aiSaveMutation = useMutation({
     mutationFn: async () => {

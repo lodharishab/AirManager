@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useExpenses, useProperties, useCreateExpense, useUpdateExpense, useDeleteExpense } from "@/lib/api";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { Card } from "@/components/ui/card";
@@ -32,7 +32,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -52,7 +51,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { expenseCategories, type ExpenseCategory, type InsertExpense } from "@shared/schema";
+import { expenseCategories, type InsertExpense } from "@shared/schema";
 import { formatCurrency } from "@shared/currency";
 
 const categoryColors: Record<string, string> = {
@@ -98,15 +97,15 @@ export default function Expenses() {
   const deleteExpense = useDeleteExpense();
   const { toast } = useToast();
 
-  const allExpenses = expensesResult?.data || [];
-  const allProperties = propertiesResult?.data || [];
+  const allExpenses = useMemo(() => expensesResult?.data || [], [expensesResult]);
+  const allProperties = useMemo(() => propertiesResult?.data || [], [propertiesResult]);
 
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
-  const totalExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const thisMonthExpenses = allExpenses
+  const _totalExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const _thisMonthExpenses = allExpenses
     .filter((e) => {
       const d = parseISO(e.date);
       return isWithinInterval(d, { start: monthStart, end: monthEnd });
@@ -277,9 +276,9 @@ export default function Expenses() {
     }
   };
 
-  const getPropertyCurrency = (propertyId: number) => {
-    return allProperties.find(p => p.id === propertyId)?.currency || "USD";
-  };
+  const getPropertyCurrency = useCallback((propertyId: number) => {
+    return allProperties.find(p => p.id === propertyId)?.currency || "INR";
+  }, [allProperties]);
 
   const expenseTotalsByCurrency = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -288,7 +287,7 @@ export default function Expenses() {
       totals[cur] = (totals[cur] || 0) + e.amount;
     });
     return totals;
-  }, [allExpenses, allProperties]);
+  }, [allExpenses, getPropertyCurrency]);
 
   const monthlyTotalsByCurrency = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -302,11 +301,11 @@ export default function Expenses() {
         totals[cur] = (totals[cur] || 0) + e.amount;
       });
     return totals;
-  }, [allExpenses, allProperties, monthStart, monthEnd]);
+  }, [allExpenses, getPropertyCurrency, monthStart, monthEnd]);
 
   const formatMultiCurrency = (totals: Record<string, number>) => {
     const entries = Object.entries(totals);
-    if (entries.length === 0) return formatCurrency(0, "USD");
+    if (entries.length === 0) return formatCurrency(0, "INR");
     if (entries.length === 1) return formatCurrency(entries[0][1], entries[0][0]);
     return entries.map(([code, amount]) => formatCurrency(amount, code)).join(" + ");
   };
@@ -380,7 +379,7 @@ export default function Expenses() {
               <p className="text-sm text-muted-foreground">Top Category</p>
               <p className="text-2xl font-bold text-foreground capitalize">{topCategory.category || "—"}</p>
               {topCategory.amount > 0 && (
-                <p className="text-xs text-muted-foreground">{formatCurrency(topCategory.amount, Object.keys(expenseTotalsByCurrency)[0] || "USD")}</p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(topCategory.amount, Object.keys(expenseTotalsByCurrency)[0] || "INR")}</p>
               )}
             </div>
           </div>

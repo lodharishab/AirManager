@@ -25,10 +25,10 @@ export default function Login() {
         await register(username, password);
         toast({ title: "Account created", description: "Welcome to AirManager!" });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: mode === "login" ? "Login failed" : "Registration failed",
-        description: err?.message || "Something went wrong. Please try again.",
+        description: (err instanceof Error ? err.message : String(err)) || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -52,7 +52,7 @@ export default function Login() {
             {[
               { label: "Properties managed", value: "2,400+" },
               { label: "Average occupancy", value: "87%" },
-              { label: "Revenue tracked", value: "$12M+" },
+              { label: "Default currency", value: "INR (₹)" },
             ].map((stat) => (
               <div key={stat.label} className="flex items-center justify-between py-3 border-b border-border/60 last:border-0">
                 <span className="text-sm text-muted-foreground">{stat.label}</span>

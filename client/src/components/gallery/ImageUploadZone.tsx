@@ -21,7 +21,7 @@ interface ImageUploadZoneProps {
   onComplete?: () => void;
 }
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"];
 const MAX_SIZE = 10 * 1024 * 1024;
 
 interface QueuedFile {
@@ -50,7 +50,7 @@ export function ImageUploadZone({ properties, propertyId: defaultPropertyId, onC
     return files.map((file) => {
       const id = `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        return { file, id, status: "error" as const, progress: 0, error: "Only JPEG, PNG, and WebP files are accepted" };
+        return { file, id, status: "error" as const, progress: 0, error: "Only JPEG, PNG, WebP, MP4, MOV and WebM files are accepted" };
       }
       if (file.size > MAX_SIZE) {
         return { file, id, status: "error" as const, progress: 0, error: "File size must be under 10MB" };
@@ -133,8 +133,8 @@ export function ImageUploadZone({ properties, propertyId: defaultPropertyId, onC
       }
 
       onComplete?.();
-    } catch (err: any) {
-      toast({ title: err.message || "Upload failed", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: (err instanceof Error ? err.message : String(err)) || "Upload failed", variant: "destructive" });
       setQueuedFiles((prev) =>
         prev.map((f) => (f.status === "uploading" ? { ...f, status: "error" as const, progress: 0, error: "Upload failed" } : f))
       );
@@ -162,7 +162,7 @@ export function ImageUploadZone({ properties, propertyId: defaultPropertyId, onC
           type="file"
           data-testid="input-file-upload"
           className="hidden"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
           multiple
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files);
@@ -171,7 +171,7 @@ export function ImageUploadZone({ properties, propertyId: defaultPropertyId, onC
         />
         <Upload className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
         <p className="text-sm font-medium">Drag & drop images here, or click to browse</p>
-        <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP up to 10MB each</p>
+        <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, MP4, MOV or WebM up to 10MB each</p>
       </div>
 
       {queuedFiles.length > 0 && (

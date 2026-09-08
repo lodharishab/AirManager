@@ -1,4 +1,5 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
+import { QueryClient, QueryFunction, MutationCache } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -51,12 +52,13 @@ export const getQueryFn: <T>(options: {
   };
 
 export const queryClient = new QueryClient({
+  mutationCache: new MutationCache({ onError: (error, _variables, _context, mutation) => { if (!mutation.options.onError) toast({ title: "Could not save changes", description: error.message, variant: "destructive" }); } }),
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
       retry: false,
     },
     mutations: {

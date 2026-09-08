@@ -30,7 +30,7 @@ export async function importFromGoogleDrive(folderId: string, propertyId?: numbe
   }
 
   const allImagesResult = await storage.getGalleryImages({ page: 1, limit: 10000 });
-  const existingDriveIds = new Set(allImagesResult.data.filter((img: any) => img.driveFileId).map((img: any) => img.driveFileId));
+  const existingDriveIds = new Set(allImagesResult.data.filter((img) => img.driveFileId).map((img) => img.driveFileId));
 
   let imported = 0;
   for (const file of data.files) {

@@ -73,7 +73,7 @@ export function GalleryHeader({ searchTerm, onSearchChange, properties }: Galler
           setDriveDialogOpen(false);
           setDriveUrl("");
         },
-        onError: (err: any) => {
+        onError: (err: Error) => {
           toast({ title: err.message || "Failed to import", variant: "destructive" });
         },
       }

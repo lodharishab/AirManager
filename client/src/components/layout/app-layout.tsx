@@ -112,7 +112,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center"
-            data-testid="button-close-menu"
+            aria-label="Close navigation menu" data-testid="button-close-menu"
           >
             <X size={20} />
           </button>
@@ -224,7 +224,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <header className="h-14 md:h-16 border-b border-border bg-card/30 backdrop-blur-sm flex items-center justify-between px-4 md:px-5 sticky top-0 z-30">
           <div className="flex items-center gap-3 md:gap-4">
             <button
-              data-testid="button-open-menu"
+              aria-label="Open navigation menu" data-testid="button-open-menu"
               className="md:hidden text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2"
               onClick={() => setMobileOpen(true)}
             >
@@ -247,6 +247,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
+            <button className="md:hidden h-11 w-11 flex items-center justify-center" aria-label="Open AI assistant" onClick={() => window.dispatchEvent(new Event("airmanager:open-chat"))}><MessageSquare size={20} /></button>
             <ThemeToggleHeader />
             <NotificationDropdown />
             <div className="h-8 w-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -255,7 +256,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 p-4 pb-24 md:p-6 md:pb-24 lg:p-8 lg:pb-24 overflow-x-hidden">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

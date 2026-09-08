@@ -1,3 +1,4 @@
+import { validateDates, validateTransition, validateCapacity, peakUnits, occupancyPercent, businessToday, bookingError } from "@shared/booking-rules";
 import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte, asc } from "drizzle-orm";
 import { db } from "./db";
 import {
@@ -240,11 +241,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProperties(params?: PropertySearchParams): Promise<PaginatedResult<Property>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
-    const conditions: any[] = [isNull(properties.deletedAt)];
+    const conditions: (import("drizzle-orm").SQL | undefined)[] = [isNull(properties.deletedAt)];
     if (params?.search) {
       const searchPattern = `%${params.search}%`;
       conditions.push(
@@ -270,12 +271,12 @@ export class DatabaseStorage implements IStorage {
       .limit(limit)
       .offset(offset);
 
-    return { data, total: countResult.count, page, limit };
+    return { data: await Promise.all(data.map(p => this.withPropertyMetrics(p))), total: countResult.count, page, limit };
   }
 
   async getProperty(id: number): Promise<Property | undefined> {
     const [property] = await db.select().from(properties).where(and(eq(properties.id, id), isNull(properties.deletedAt)));
-    return property;
+    return property ? this.withPropertyMetrics(property) : undefined;
   }
 
   async createProperty(property: InsertProperty): Promise<Property> {
@@ -355,11 +356,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBookings(params?: BookingSearchParams): Promise<PaginatedResult<Booking>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
-    const conditions: any[] = [isNull(bookings.deletedAt)];
+    const conditions: (import("drizzle-orm").SQL | undefined)[] = [isNull(bookings.deletedAt)];
     if (params?.search) {
       conditions.push(ilike(bookings.guestName, `%${params.search}%`));
     }
@@ -384,6 +385,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(bookings)
       .where(whereClause)
+      .orderBy(desc(bookings.checkIn), desc(bookings.id))
       .limit(limit)
       .offset(offset);
 
@@ -398,81 +400,45 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.booking;
   }
 
+  private async saveBooking(data: Partial<InsertBooking>, id?: number): Promise<Booking | undefined> {
+    return db.transaction(async tx => {
+      // Serialize booking writes so simultaneous reservations cannot oversell.
+      await tx.execute(sql`LOCK TABLE bookings IN EXCLUSIVE MODE`);
+      const [existing] = id ? await tx.select().from(bookings).where(and(eq(bookings.id, id), isNull(bookings.deletedAt))) : [];
+      if (id && !existing) return undefined;
+      const candidate = { ...existing, ...data } as InsertBooking;
+      candidate.status ??= "upcoming";
+      validateDates(candidate);
+      if (existing) validateTransition(existing, candidate);
+      if (!Number.isInteger(candidate.totalAmount) || candidate.totalAmount < 0) bookingError("Amount must be a non-negative whole rupee value.", 400);
+      const [property] = await tx.select().from(properties).where(and(eq(properties.id, candidate.propertyId), isNull(properties.deletedAt)));
+      if (!property) bookingError("Property not found.", 400);
+      const propertyRooms = await tx.select().from(rooms).where(eq(rooms.propertyId, candidate.propertyId));
+      if (property.bookingMode === "whole") { candidate.roomId = null; candidate.roomCount = null; }
+      // Preserve historical notes/status corrections without revalidating old oversells.
+      const capacityChanged = !existing || ['propertyId', 'roomId', 'roomCount', 'checkIn', 'checkOut'].some(k =>
+        candidate[k as keyof InsertBooking] !== existing[k as keyof Booking]) || (existing.status === "cancelled" && candidate.status !== "cancelled");
+      if (capacityChanged) {
+        const others = await tx.select().from(bookings).where(and(eq(bookings.propertyId, candidate.propertyId), isNull(bookings.deletedAt), id ? sql`${bookings.id} != ${id}` : undefined));
+        validateCapacity(candidate, property.bookingMode, propertyRooms, others);
+      }
+      if (candidate.guestId != null) {
+        const [guest] = await tx.select().from(guests).where(eq(guests.id, candidate.guestId));
+        if (!guest) bookingError("Guest not found.", 400);
+        candidate.guestName = guest.name;
+      }
+      const { id: _id, deletedAt: _deletedAt, ...values } = candidate as Booking;
+      const [result] = id ? await tx.update(bookings).set(values).where(eq(bookings.id, id)).returning() : await tx.insert(bookings).values(values).returning();
+      return result;
+    });
+  }
+
   async createBooking(booking: InsertBooking): Promise<Booking> {
-    const { pool } = await import("./db");
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query("LOCK TABLE bookings IN EXCLUSIVE MODE");
-      // Room-aware conflict detection inside the locked transaction.
-      // Whole-property booking: ANY overlap blocks. Room-based: a specific room
-      // blocks only if that same room overlaps; otherwise capacity is checked.
-      const modeResult = await client.query(`SELECT booking_mode FROM properties WHERE id = $1`, [booking.propertyId]);
-      const bookingMode = modeResult.rows[0]?.booking_mode ?? "whole";
-      const overlapRows = await client.query(
-        `SELECT room_id, COALESCE(room_count, 1) AS units
-           FROM bookings
-          WHERE property_id = $1 AND check_in < $2 AND check_out > $3
-            AND deleted_at IS NULL AND status != 'cancelled'`,
-        [booking.propertyId, booking.checkOut, booking.checkIn]
-      );
-      const overlaps = overlapRows.rows;
-      let conflict = false;
-      if (bookingMode === "whole") {
-        conflict = overlaps.length > 0;
-      } else if (booking.roomId != null) {
-        conflict = overlaps.some((r: { room_id: number | null }) => r.room_id === booking.roomId);
-      } else {
-        const capacityResult = await client.query(
-          `SELECT COALESCE(SUM(room_count), 0) AS capacity FROM rooms WHERE property_id = $1`,
-          [booking.propertyId]
-        );
-        const capacity = Number(capacityResult.rows[0]?.capacity ?? 0);
-        const bookedUnits = overlaps.reduce((sum: number, r: { units: number }) => sum + Number(r.units), 0);
-        conflict = bookedUnits + Math.max(booking.roomCount ?? 1, 1) > capacity;
-      }
-      if (conflict) {
-        await client.query("ROLLBACK");
-        throw new Error("BOOKING_OVERLAP");
-      }
-      const insertResult = await client.query(
-        `INSERT INTO bookings (property_id, guest_name, guest_id, check_in, check_out, status, total_amount, room_id, room_count, notes, source)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-        [
-          booking.propertyId, booking.guestName, booking.guestId ?? null, booking.checkIn, booking.checkOut,
-          booking.status ?? "upcoming", booking.totalAmount,
-          booking.roomId ?? null, booking.roomCount ?? null, booking.notes ?? null,
-          booking.source ?? "manual",
-        ]
-      );
-      await client.query("COMMIT");
-      const row = insertResult.rows[0];
-      return {
-        id: row.id,
-        propertyId: row.property_id,
-        guestName: row.guest_name,
-        guestId: row.guest_id,
-        checkIn: row.check_in,
-        checkOut: row.check_out,
-        status: row.status,
-        totalAmount: row.total_amount,
-        roomId: row.room_id,
-        roomCount: row.room_count,
-        notes: row.notes,
-        source: row.source,
-        deletedAt: row.deleted_at,
-      };
-    } catch (e) {
-      await client.query("ROLLBACK").catch(() => {});
-      throw e;
-    } finally {
-      client.release();
-    }
+    return (await this.saveBooking(booking))!;
   }
 
   async updateBooking(id: number, data: Partial<InsertBooking>): Promise<Booking | undefined> {
-    const [updated] = await db.update(bookings).set(data).where(and(eq(bookings.id, id), isNull(bookings.deletedAt))).returning();
-    return updated;
+    return this.saveBooking(data, id);
   }
 
   async deleteBooking(id: number): Promise<void> {
@@ -483,6 +449,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [
       eq(bookings.propertyId, propertyId),
       isNull(bookings.deletedAt),
+      sql`${bookings.status} != 'cancelled'`,
       lt(bookings.checkIn, checkOut),
       gt(bookings.checkOut, checkIn),
     ];
@@ -495,11 +462,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAvailabilityInfo(propertyId: number, checkIn: string, checkOut: string): Promise<{ available: boolean; bookingMode: string; bookedUnits: number; capacity: number | null; wholePropertyBooked: boolean; }> {
+    validateDates({ checkIn, checkOut });
     const [property] = await db.select().from(properties).where(eq(properties.id, propertyId));
     if (!property) throw new Error("PROPERTY_NOT_FOUND");
     const bookingMode = property.bookingMode || "whole";
     const overlapping = await db
-      .select({ roomId: bookings.roomId, roomCount: bookings.roomCount })
+      .select()
       .from(bookings)
       .where(and(
         eq(bookings.propertyId, propertyId),
@@ -509,9 +477,9 @@ export class DatabaseStorage implements IStorage {
         gt(bookings.checkOut, checkIn),
       ));
     const wholePropertyBooked = bookingMode === "whole" && overlapping.length > 0;
-    const bookedUnits = overlapping.reduce((sum, b) => sum + Math.max(b.roomCount ?? 1, 1), 0);
+    const bookedUnits = peakUnits(overlapping, checkIn, checkOut);
     let capacity: number | null = null;
-    if (bookingMode === "room_based") {
+    if (bookingMode !== "whole") {
       const propertyRooms = await this.getRoomsByProperty(propertyId);
       capacity = propertyRooms.reduce((sum, r) => sum + Math.max(r.roomCount, 1), 0);
     }
@@ -557,8 +525,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGalleryImages(params?: PaginationParams): Promise<PaginatedResult<GalleryImage>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
     const [countResult] = await db
@@ -598,8 +566,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getExpenses(params?: PaginationParams): Promise<PaginatedResult<Expense>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
     const [countResult] = await db
@@ -635,8 +603,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEnquiries(params?: PaginationParams): Promise<PaginatedResult<Enquiry>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
     const [countResult] = await db
@@ -672,8 +640,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReviews(params?: ReviewSearchParams): Promise<PaginatedResult<Review>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
     const conditions = [];
@@ -728,8 +696,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getHousekeepingTasks(params?: PaginationParams): Promise<PaginatedResult<HousekeepingTask>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
     const [countResult] = await db
@@ -801,21 +769,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUserPreferences(userId: number, data: Partial<InsertUserPreferences>): Promise<UserPreferences> {
-    const existing = await this.getUserPreferences(userId);
-    if (existing) {
-      const [updated] = await db.update(userPreferences).set(data).where(eq(userPreferences.userId, userId)).returning();
-      return updated;
-    }
-    const [created] = await db.insert(userPreferences).values({ userId, ...data }).returning();
-    return created;
+    if (!Number.isInteger(userId) || userId <= 0) bookingError("Sign in to access preferences.", 401);
+    const { userId: _userId, ...preferences } = data;
+    const [result] = await db.insert(userPreferences).values({ ...preferences, userId })
+      .onConflictDoUpdate({ target: userPreferences.userId, set: { ...preferences, userId } }).returning();
+    return result;
   }
 
   async getGuests(params?: GuestSearchParams): Promise<PaginatedResult<GuestWithStats>> {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
+    const page = Number.isInteger(params?.page) ? Math.max(1, params!.page!) : 1;
+    const limit = Number.isInteger(params?.limit) ? Math.max(1, Math.min(10000, params!.limit!)) : 50;
     const offset = (page - 1) * limit;
 
-    const conditions: any[] = [];
+    const conditions: (import("drizzle-orm").SQL | undefined)[] = [];
     if (params?.search) {
       const searchPattern = `%${params.search}%`;
       conditions.push(
@@ -837,9 +803,9 @@ export class DatabaseStorage implements IStorage {
     const data = await db
       .select({
         guest: guests,
-        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)::int, 0)`,
-        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
-        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)`,
+        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status not in ('cancelled', 'blocked'))::int, 0)`,
+        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status not in ('cancelled', 'blocked'))::int, 0)`,
+        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status in ('checked_out', 'completed'))`,
       })
       .from(guests)
       .where(whereClause)
@@ -866,9 +832,9 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select({
         guest: guests,
-        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)::int, 0)`,
-        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
-        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)`,
+        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status not in ('cancelled', 'blocked'))::int, 0)`,
+        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status not in ('cancelled', 'blocked'))::int, 0)`,
+        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status in ('checked_out', 'completed'))`,
       })
       .from(guests)
       .where(eq(guests.id, id));
@@ -902,9 +868,9 @@ export class DatabaseStorage implements IStorage {
     const data = await db
       .select({
         guest: guests,
-        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)::int, 0)`,
-        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status != 'cancelled')::int, 0)`,
-        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null)`,
+        totalStays: sql<number>`coalesce((select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status not in ('cancelled', 'blocked'))::int, 0)`,
+        totalSpent: sql<number>`coalesce((select sum(total_amount) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status not in ('cancelled', 'blocked'))::int, 0)`,
+        lastVisit: sql<string | null>`(select max(check_out) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null and bookings.status in ('checked_out', 'completed'))`,
       })
       .from(guests)
       .orderBy(sql`(select count(*) from bookings where bookings.guest_id = "guests"."id" and bookings.deleted_at is null) desc`)
@@ -924,7 +890,7 @@ export class DatabaseStorage implements IStorage {
       .from(bookings)
       .where(
         and(
-          sql`${bookings.status} != 'cancelled'`,
+          sql`${bookings.status} not in ('cancelled', 'blocked')`,
           isNull(bookings.deletedAt)
         )
       );
@@ -939,7 +905,7 @@ export class DatabaseStorage implements IStorage {
         revenue: sql<number>`coalesce(sum(${bookings.totalAmount}), 0)::int`,
       })
       .from(bookings)
-      .where(and(sql`${bookings.status} != 'cancelled'`, isNull(bookings.deletedAt)))
+      .where(and(sql`${bookings.status} not in ('cancelled', 'blocked')`, isNull(bookings.deletedAt)))
       .groupBy(
         sql`to_char(${bookings.checkIn}::timestamp, 'YYYY-MM')`,
         sql`to_char(${bookings.checkIn}::timestamp, 'Mon YYYY')`
@@ -949,34 +915,19 @@ export class DatabaseStorage implements IStorage {
     return result.map(r => ({ month: r.monthLabel, revenue: r.revenue }));
   }
 
-  async getOccupancyStats(): Promise<{ averageOccupancy: number }> {
-    const allProps = await db.select().from(properties).where(isNull(properties.deletedAt));
-    if (allProps.length === 0) return { averageOccupancy: 0 };
-    const allBookings = await this.getAllBookings();
-    const allRooms = await this.getAllRooms();
-    const now = new Date();
-    const rangeStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
-    const rangeEnd = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-    const rangeDays = Math.max(1, (rangeEnd - rangeStart) / 86400000);
+  private async withPropertyMetrics(property: Property): Promise<Property> {
+    const today = businessToday();
+    const start = today.slice(0, 7) + "-01";
+    const end = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 1)).toISOString().slice(0, 10);
+    const propertyBookings = await this.getBookingsByProperty(property.id);
+    const capacity = property.bookingMode === "whole" ? 1 : (await this.getRoomsByProperty(property.id)).reduce((n, r) => n + r.roomCount, 0);
+    return { ...property, totalRooms: capacity, occupancyRate: occupancyPercent(propertyBookings, capacity, start, end),
+      monthlyRevenue: propertyBookings.filter(b => !["cancelled", "blocked"].includes(b.status) && b.checkIn >= start && b.checkIn < end).reduce((n, b) => n + b.totalAmount, 0) };
+  }
 
-    const rates = allProps.map((property) => {
-      const roomBased = property.bookingMode === "room_based" || property.bookingMode === "rooms";
-      const capacity = roomBased
-        ? Math.max(1, allRooms.filter((room) => room.propertyId === property.id).reduce((sum, room) => sum + room.roomCount, 0))
-        : 1;
-      const occupiedUnitNights = allBookings
-        .filter((booking) => booking.propertyId === property.id && booking.status !== "cancelled")
-        .reduce((sum, booking) => {
-          const bookingStart = new Date(`${booking.checkIn}T00:00:00Z`).getTime();
-          const bookingEnd = new Date(`${booking.checkOut}T00:00:00Z`).getTime();
-          const overlapDays = Math.max(0, (Math.min(bookingEnd, rangeEnd) - Math.max(bookingStart, rangeStart)) / 86400000);
-          const units = roomBased ? Math.max(booking.roomCount ?? 1, 1) : 1;
-          return sum + overlapDays * units;
-        }, 0);
-      return Math.min(100, Math.round((occupiedUnitNights / (rangeDays * capacity)) * 100));
-    });
-    const avg = Math.round(rates.reduce((sum, rate) => sum + rate, 0) / rates.length);
-    return { averageOccupancy: avg };
+  async getOccupancyStats(): Promise<{ averageOccupancy: number }> {
+    const allProps = (await this.getProperties({ limit: 10000 })).data;
+    return { averageOccupancy: allProps.length ? Math.round(allProps.reduce((n, p) => n + p.occupancyRate, 0) / allProps.length) : 0 };
   }
 
   async getBookingsByProperty(propertyId: number): Promise<Booking[]> {

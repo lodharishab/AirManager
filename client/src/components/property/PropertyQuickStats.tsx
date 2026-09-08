@@ -31,9 +31,9 @@ export function PropertyQuickStats({ checkOutTime, bookings }: PropertyQuickStat
         </div>
         <Separator className="bg-border/30" />
         <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Active Guests</span>
+          <span className="text-sm text-muted-foreground">Checked-in Bookings</span>
           <span className="font-medium text-sm">
-            {bookings.filter(b => b.status === "current").length}
+            {bookings.filter(b => ["current", "checked_in"].includes(b.status)).length}
           </span>
         </div>
         <Separator className="bg-border/30" />

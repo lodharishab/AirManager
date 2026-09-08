@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAnalytics } from "@/lib/api";
 import { useProperties } from "@/lib/api";
-import { Loader2, TrendingUp, BarChart3, PieChart, DollarSign, FileDown } from "lucide-react";
-import { formatCurrency, getCurrencySymbol } from "@shared/currency";
+import { Loader2, TrendingUp, BarChart3, PieChart, IndianRupee, FileDown } from "lucide-react";
+import { formatCurrency} from "@shared/currency";
 import {
   BarChart, Bar, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "hsl(0, 60%, 55%)",
 };
 
-function formatAmount(amount: number, currency: string = "USD") {
+function formatAmount(amount: number, currency: string = "INR") {
   return formatCurrency(amount, currency);
 }
 
@@ -54,7 +54,7 @@ export default function Analytics() {
   const { data: propertiesResult } = useProperties({ page: 1, limit: 10000 });
   const properties = propertiesResult?.data || [];
   const { toast } = useToast();
-  const primaryCurrency = properties.length > 0 ? (properties[0].currency || "USD") : "USD";
+  const primaryCurrency = properties.length > 0 ? (properties[0].currency || "INR") : "INR";
 
   const today = new Date();
   const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
@@ -105,7 +105,7 @@ export default function Analytics() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 data-testid="text-analytics-title" className="text-3xl font-bold tracking-tight font-serif text-primary">Analytics</h1>
-          <p className="text-muted-foreground mt-1">Deep insights into revenue, occupancy, and booking performance.</p>
+          <p className="text-muted-foreground mt-1">Revenue uses booking amounts, not verified payouts. Expenses include recorded entries only. Occupancy uses the selected dates, or the current month.</p>
         </div>
         <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
           <DialogTrigger asChild>
@@ -172,7 +172,7 @@ export default function Analytics() {
       {/* Filters */}
       <Card className="rounded-2xl shadow-sm border-border">
         <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="flex-1 space-y-1.5">
               <Label className="text-xs text-muted-foreground uppercase tracking-wider">From</Label>
               <Input
@@ -223,11 +223,11 @@ export default function Analytics() {
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Total Revenue</p>
+                    <p className="text-sm text-muted-foreground">Booking Value (selected dates)</p>
                     <p data-testid="text-total-revenue-value" className="text-3xl font-bold font-serif">{formatAmount(analytics.totalRevenue, primaryCurrency)}</p>
                   </div>
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <DollarSign size={18} className="text-primary" />
+                    <IndianRupee size={18} className="text-primary" />
                   </div>
                 </div>
               </CardContent>
@@ -262,7 +262,7 @@ export default function Analytics() {
 
           {/* Revenue Section */}
           <div>
-            <SectionHeader icon={DollarSign} title="Revenue" />
+            <SectionHeader icon={IndianRupee} title="Revenue" />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue by property */}
               <Card className="rounded-2xl shadow-sm border-border overflow-hidden">
@@ -454,7 +454,7 @@ export default function Analytics() {
               {/* Revenue vs Expenses */}
               <Card className="rounded-2xl shadow-sm border-border overflow-hidden">
                 <CardHeader className="border-b bg-secondary/30 pb-4">
-                  <CardTitle className="text-base font-semibold text-primary font-serif">Revenue vs Expenses (est.)</CardTitle>
+                  <CardTitle className="text-base font-semibold text-primary font-serif">Booking Value vs Recorded Expenses</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                   {analytics.profitByProperty.length === 0 ? (
@@ -485,8 +485,8 @@ export default function Analytics() {
                           />
                           <Legend wrapperStyle={{ paddingTop: "8px", fontSize: "12px" }} />
                           <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="expenses" name="Expenses (est.)" fill="hsl(0, 55%, 55%)" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="profit" name="Profit" fill="hsl(142, 55%, 50%)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="expenses" name="Recorded Expenses" fill="hsl(0, 55%, 55%)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="profit" name="Value less recorded expenses" fill="hsl(142, 55%, 50%)" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

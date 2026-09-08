@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+
 import { useToast } from "@/hooks/use-toast";
 import { useGenerateIcalToken, useImportCalendar, useDeleteExternalCalendar } from "@/lib/api";
 import { CalendarSync, Copy, Link2, Loader2, Trash2, ExternalLink } from "lucide-react";

@@ -19,7 +19,7 @@ interface PropertyHeroProps {
 }
 
 export function PropertyHero({ property }: PropertyHeroProps) {
-  const currency = property.currency || "USD";
+  const currency = property.currency || "INR";
   const { toast } = useToast();
   const uploadImages = useUploadImages();
   const updateProperty = useUpdateProperty();
@@ -49,8 +49,8 @@ export function PropertyHero({ property }: PropertyHeroProps) {
       } else if (result.errors.length > 0) {
         toast({ title: result.errors[0].error, variant: "destructive" });
       }
-    } catch (err: any) {
-      toast({ title: err.message || "Upload failed", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: (err instanceof Error ? err.message : String(err)) || "Upload failed", variant: "destructive" });
     } finally {
       setIsUploading(false);
       e.target.value = "";

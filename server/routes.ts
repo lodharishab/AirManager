@@ -1,6 +1,6 @@
+import { businessToday, occupancyPercent, validateDates } from "@shared/booking-rules";
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
-import OpenAI from "openai";
+import { type Server } from "http";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { storage } from "./storage";
@@ -9,7 +9,7 @@ import { logStructured } from "./logger";
 import {
   properties, rooms, bookings, conversations, messages,
   revenueData, galleryImages, enquiries, reviews,
-  expenses, housekeepingTasks, notifications, userPreferences, guests,
+  expenses, housekeepingTasks, notifications, userPreferences,
   insertPropertySchema,
   insertRoomSchema,
   insertPropertyLinkSchema,
@@ -41,7 +41,7 @@ import {
   buildOverdueTaskEmail,
 } from "./email";
 import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectStorageUrl, getMimeType } from "./object-storage";
-import { getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
+import { aiChat, getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
 import { runFollowUpSweep } from "./followups/engine";
 import { runPricingRecommendations, approvePriceRecommendation, rejectPriceRecommendation } from "./pricing/engine";
 import { runTriage } from "./tickets/engine";
@@ -52,14 +52,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-const openai = config.ai.enabled
-  ? new OpenAI({
-      apiKey: config.ai.apiKey,
-      baseURL: config.ai.baseUrl,
-    })
-  : null;
-
-type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<any>;
+type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
 
 function asyncHandler(fn: AsyncHandler) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -68,8 +61,8 @@ function asyncHandler(fn: AsyncHandler) {
         correlationId: req.correlationId,
         method: req.method,
         path: req.path,
-        error: err.message,
-        stack: process.env.NODE_ENV !== "production" ? err.stack : undefined,
+        error: (err instanceof Error ? err.message : String(err)),
+        stack: process.env.NODE_ENV !== "production" ? (err instanceof Error ? err.stack : undefined) : undefined,
       });
       next(err);
     });
@@ -84,6 +77,9 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
     const a = Buffer.from(provided);
     const b = Buffer.from(apiKey);
     if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      if (req.path.startsWith("/auth/") || req.path === "/user-preferences") {
+        if (!req.session?.userId) return res.status(401).json({ message: "Sign in to access your account" });
+      }
       return next();
     }
   }
@@ -233,9 +229,9 @@ async function safeFetchIcal(url: string): Promise<{ ok: true; data: string } | 
         return { ok: false, message: "Calendar file too large" };
       }
       return { ok: true, data };
-    } catch (e: any) {
+    } catch (e: unknown) {
       clearTimeout(timeout);
-      return { ok: false, message: `Failed to fetch calendar: ${e.message}` };
+      return { ok: false, message: `Failed to fetch calendar: ${(e instanceof Error ? e.message : String(e))}` };
     }
   }
 
@@ -266,7 +262,7 @@ async function trySendNotificationEmail(
     logStructured("warn", {
       context: "email",
       message: "Failed to query user preferences for email notification",
-      error: err instanceof Error ? err.message : String(err),
+      error: err instanceof Error ? (err instanceof Error ? err.message : String(err)) : String(err),
     });
   }
 }
@@ -277,6 +273,15 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  for (const name of ["id", "propertyId", "bookingId", "conversationId"]) {
+    app.param(name, (_req, res, next, value) => {
+      if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) <= 0) {
+        res.status(400).json({ message: "Invalid record ID" }); return;
+      }
+      next();
+    });
+  }
 
   app.get("/api/health", async (_req, res) => {
     const startTime = process.uptime();
@@ -297,6 +302,7 @@ export async function registerRoutes(
 
   // --- Auth routes (public) ---
   app.post("/api/auth/register", asyncHandler(async (req, res) => {
+    if (config.isProduction && process.env.ALLOW_REGISTRATION !== "true") return res.status(403).json({ message: "Account registration is disabled. Contact the property manager." });
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ message: "Username and password are required" });
@@ -586,8 +592,8 @@ export async function registerRoutes(
         const objectName = await uploadImage(file.buffer, file.originalname, file.mimetype);
         const url = `/api/${objectName}`;
         results.push({ url, originalName: file.originalname });
-      } catch (err: any) {
-        errors.push({ file: file.originalname, error: err.message || "Upload failed" });
+      } catch (err: unknown) {
+        errors.push({ file: file.originalname, error: (err instanceof Error ? err.message : String(err)) || "Upload failed" });
       }
     }
 
@@ -635,7 +641,8 @@ export async function registerRoutes(
   }));
 
   app.get("/api/user-preferences", asyncHandler(async (req, res) => {
-    const prefs = await storage.getUserPreferences(req.session.userId!);
+    if (!req.session?.userId) return res.status(401).json({ message: "Sign in to access your preferences" });
+    const prefs = await storage.getUserPreferences(req.session.userId);
     if (!prefs) {
       const created = await storage.upsertUserPreferences(req.session.userId!, {});
       return res.json(created);
@@ -644,8 +651,9 @@ export async function registerRoutes(
   }));
 
   app.patch("/api/user-preferences", asyncHandler(async (req, res) => {
+    if (!req.session?.userId) return res.status(401).json({ message: "Sign in to change your preferences" });
     const { emailNotifications, pushNotifications, bookingAlerts, messageAlerts, notificationEmail } = req.body;
-    const data: Record<string, any> = {};
+    const data: Partial<import("@shared/schema").InsertUserPreferences> = {};
     if (typeof emailNotifications === "boolean") data.emailNotifications = emailNotifications;
     if (typeof pushNotifications === "boolean") data.pushNotifications = pushNotifications;
     if (typeof bookingAlerts === "boolean") data.bookingAlerts = bookingAlerts;
@@ -681,9 +689,7 @@ export async function registerRoutes(
   }));
 
   app.post("/api/properties", asyncHandler(async (req, res) => {
-    if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) {
-      return res.status(400).json({ message: "Booking mode must be whole or room_based" });
-    }
+    if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) return res.status(400).json({ message: "Booking mode must be whole or room_based" });
     const parsed = insertPropertySchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
     const property = await storage.createProperty(parsed.data);
@@ -691,9 +697,7 @@ export async function registerRoutes(
   }));
 
   app.patch("/api/properties/:id", asyncHandler(async (req, res) => {
-    if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) {
-      return res.status(400).json({ message: "Booking mode must be whole or room_based" });
-    }
+    if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) return res.status(400).json({ message: "Booking mode must be whole or room_based" });
     const parsed = insertPropertySchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
     const updated = await storage.updateProperty(Number(req.params.id), parsed.data);
@@ -800,12 +804,12 @@ export async function registerRoutes(
           source: sourceId,
         });
         imported++;
-      } catch (e: any) {
+      } catch (e: unknown) {
         failed++;
         logStructured("warn", {
           method: "POST",
           path: `/api/properties/${propertyId}/import-calendar`,
-          error: `Failed to import event: ${e.message}`,
+          error: `Failed to import event: ${(e instanceof Error ? e.message : String(e))}`,
           event: { dtstart: event.dtstart, dtend: event.dtend, summary: event.summary },
         });
       }
@@ -887,8 +891,7 @@ export async function registerRoutes(
 
   app.get("/api/check-ins", asyncHandler(async (req, res) => {
     const allBookings = await storage.getAllBookings();
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(businessToday() + "T00:00:00Z");
     const hasCustomRange = !!(req.query.startDate || req.query.endDate);
 
     const startDate = req.query.startDate ? new Date(req.query.startDate as string) : today;
@@ -968,7 +971,7 @@ export async function registerRoutes(
       bookedUnits: info.bookedUnits,
       capacity: info.capacity,
       nightlyRate: property.nightlyRate,
-      currency: property.currency || "USD",
+      currency: property.currency || "INR",
     });
   }));
 
@@ -979,12 +982,12 @@ export async function registerRoutes(
     const property = await storage.getProperty(parsed.data.propertyId);
     if (!property) return res.status(400).json({ message: "Property not found" });
 
-    if (property.bookingMode === "room_based") {
-      if (!parsed.data.roomId || !parsed.data.roomCount || parsed.data.roomCount < 1) {
-        return res.status(400).json({ message: "Room type and room count are required for room-based properties" });
+    if (property.bookingMode !== "whole") {
+      if (!parsed.data.roomCount || parsed.data.roomCount < 1) {
+        return res.status(400).json({ message: "Room count is required for room-based properties" });
       }
-      const room = await storage.getRoom(parsed.data.roomId);
-      if (!room || room.propertyId !== property.id) {
+      const room = parsed.data.roomId ? await storage.getRoom(parsed.data.roomId) : null;
+      if (parsed.data.roomId && (!room || room.propertyId !== property.id)) {
         return res.status(400).json({ message: "Invalid room type for this property" });
       }
     } else {
@@ -992,20 +995,15 @@ export async function registerRoutes(
       parsed.data.roomCount = null;
     }
 
-    const hasOverlap = await storage.hasOverlappingBooking(
-      parsed.data.propertyId,
-      parsed.data.checkIn,
-      parsed.data.checkOut
-    );
-    if (hasOverlap) {
-      return res.status(409).json({ message: "A booking already exists for this property during the selected dates" });
+    if (parsed.data.status && !["upcoming", "blocked", "cancelled"].includes(parsed.data.status)) {
+      return res.status(400).json({ message: "Create the reservation first, then check the guest in." });
     }
 
     let booking;
     try {
       booking = await storage.createBooking(parsed.data);
     } catch (e: unknown) {
-      if (e instanceof Error && e.message === "BOOKING_OVERLAP") {
+      if (e instanceof Error && (e instanceof Error ? e.message : String(e)) === "BOOKING_OVERLAP") {
         return res.status(409).json({ message: "A booking already exists for this property during the selected dates" });
       }
       throw e;
@@ -1044,16 +1042,6 @@ export async function registerRoutes(
     const bookingId = Number(req.params.id);
     const existing = await storage.getBooking(bookingId);
     if (!existing) return res.status(404).json({ message: "Booking not found" });
-
-    const checkIn = parsed.data.checkIn ?? existing.checkIn;
-    const checkOut = parsed.data.checkOut ?? existing.checkOut;
-    const propertyId = parsed.data.propertyId ?? existing.propertyId;
-    if (parsed.data.checkIn || parsed.data.checkOut || parsed.data.propertyId) {
-      const hasOverlap = await storage.hasOverlappingBooking(propertyId, checkIn, checkOut, bookingId);
-      if (hasOverlap) {
-        return res.status(409).json({ message: "A booking already exists for this property during the selected dates" });
-      }
-    }
 
     const updated = await storage.updateBooking(bookingId, parsed.data);
     if (!updated) return res.status(404).json({ message: "Booking not found" });
@@ -1140,6 +1128,7 @@ export async function registerRoutes(
   }));
 
   app.post("/api/seed-demo", asyncHandler(async (_req, res) => {
+    if (config.isProduction) return res.status(403).json({ message: "Demo seeding is disabled in production" });
     if (config.isProduction) {
       return res.status(403).json({ message: "Demo seeding is disabled in production" });
     }
@@ -1262,7 +1251,7 @@ export async function registerRoutes(
       ]);
 
       // ── Bookings (diverse statuses + notes for check-ins page) ───────────────
-      const createdBookings = await db.insert(bookings).values([
+      const _createdBookings = await db.insert(bookings).values([
         // Currently checked in — arrives 2 days ago, leaves in 3 days
         { propertyId: props[0].id, guestName: "Sophie Beaumont", checkIn: ds(-2), checkOut: ds(3), status: "checked_in", totalAmount: 900, notes: "Early check-in requested at 1pm. Celebrating anniversary — arranged champagne." },
         // Upcoming arriving tomorrow
@@ -1379,9 +1368,9 @@ export async function registerRoutes(
       ]);
 
       res.json({ message: "Demo data seeded successfully" });
-    } catch (error: any) {
-      logStructured("error", { error: error.message, context: "seed-demo" });
-      res.status(500).json({ message: "Seed failed: " + error.message });
+    } catch (error: unknown) {
+      logStructured("error", { error: (error instanceof Error ? error.message : String(error)), context: "seed-demo" });
+      res.status(500).json({ message: "Seed failed: " + (error instanceof Error ? error.message : String(error)) });
     }
   }));
 
@@ -1441,7 +1430,8 @@ export async function registerRoutes(
   }));
 
   app.post("/api/properties/:id/ai-enrich", asyncHandler(async (req, res) => {
-    if (!openai) {
+    const aiConfig = await getAiConfig();
+    if (!aiConfig.apiKey) {
       return res.status(503).json({ message: "AI features are not configured. Set AI_INTEGRATIONS_OPENAI_API_KEY to enable this feature." });
     }
     const propertyId = Number(req.params.id);
@@ -1457,19 +1447,9 @@ export async function registerRoutes(
 
     for (const link of links) {
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-        const response = await fetch(link.url, {
-          signal: controller.signal,
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; AirManagerBot/1.0)",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          },
-        });
-        clearTimeout(timeout);
-
-        if (response.ok) {
-          let text = await response.text();
+        const fetched = await safeFetchIcal(link.url);
+        if (fetched.ok) {
+          let text = fetched.data;
           text = text
             .replace(/<script[\s\S]*?<\/script>/gi, "")
             .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -1487,15 +1467,15 @@ export async function registerRoutes(
             label: link.label,
             url: link.url,
             linkType: link.linkType,
-            content: `[Could not fetch: HTTP ${response.status}]`,
+            content: `[Could not fetch: ${fetched.message}]`,
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         fetchResults.push({
           label: link.label,
           url: link.url,
           linkType: link.linkType,
-          content: `[Could not fetch: ${err.message || "timeout/error"}]`,
+          content: `[Could not fetch: ${(err instanceof Error ? err.message : String(err)) || "timeout/error"}]`,
         });
       }
     }
@@ -1566,45 +1546,30 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
     }, SSE_MAX_DURATION_MS);
 
     try {
-      const stream = await openai!.chat.completions.create({
-        model: "gpt-5-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        stream: true,
-        max_completion_tokens: 4096,
-      });
-
-      let fullResponse = "";
-
-      for await (const chunk of stream) {
-        if (res.writableEnded) break;
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
-        }
-      }
+      const fullResponse = await aiChat([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ], { maxTokens: 4096 }, aiConfig);
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify({ content: fullResponse })}\n\n`);
 
       clearTimeout(sseTimeout);
       if (!res.writableEnded) {
         res.write(`data: ${JSON.stringify({ done: true, fullResponse })}\n\n`);
         res.end();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(sseTimeout);
       logStructured("error", {
         correlationId: req.correlationId,
-        error: error.message,
+        error: (error instanceof Error ? error.message : String(error)),
         context: "ai-enrich-stream",
       });
       if (!res.writableEnded) {
         if (res.headersSent) {
-          res.write(`data: ${JSON.stringify({ error: error.message || "AI enrichment failed" })}\n\n`);
+          res.write(`data: ${JSON.stringify({ error: (error instanceof Error ? error.message : String(error)) || "AI enrichment failed" })}\n\n`);
           res.end();
         } else {
-          res.status(500).json({ message: error.message || "AI enrichment failed" });
+          res.status(500).json({ message: (error instanceof Error ? error.message : String(error)) || "AI enrichment failed" });
         }
       }
     }
@@ -1853,21 +1818,24 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
 
   app.get("/api/analytics", asyncHandler(async (req, res) => {
     const { startDate, endDate, propertyId } = req.query;
+    const monthStart = businessToday().slice(0, 7) + "-01";
+    const monthEnd = new Date(Date.UTC(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)), 1)).toISOString().slice(0, 10);
+    const occupancyStart = startDate ? String(startDate) : monthStart;
+    const occupancyEnd = endDate && Number.isFinite(Date.parse(String(endDate))) ? new Date(Date.parse(String(endDate)) + 86400000).toISOString().slice(0, 10) : monthEnd;
+    validateDates({ checkIn: occupancyStart, checkOut: occupancyEnd });
+    const allRooms = await storage.getAllRooms();
 
     const propertiesResult = await storage.getProperties({ page: 1, limit: 10000 });
-    const allProperties = propertiesResult.data;
-    const allBookings = await storage.getAllBookings();
-    const allRooms = await storage.getAllRooms();
+    const allProperties = propertiesResult.data.filter(p => !propertyId || propertyId === "all" || p.id === Number(propertyId));
     const allExpenses = (await storage.getExpenses({ page: 1, limit: 10000 })).data;
+    const allBookings = await storage.getAllBookings();
 
     let filteredBookings = allBookings;
-    let filteredExpenses = allExpenses;
 
     // Filter by property if requested
     if (propertyId && propertyId !== "all") {
       const pid = Number(propertyId);
       filteredBookings = filteredBookings.filter(b => b.propertyId === pid);
-      filteredExpenses = filteredExpenses.filter(e => e.propertyId === pid);
     }
 
     // Filter by date range if requested
@@ -1878,16 +1846,11 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
         if (endDate && checkIn > new Date(String(endDate))) return false;
         return true;
       });
-      filteredExpenses = filteredExpenses.filter(e => {
-        if (startDate && e.date < String(startDate)) return false;
-        if (endDate && e.date > String(endDate)) return false;
-        return true;
-      });
     }
 
     // Revenue by property
     const revenueByProperty = allProperties.map(p => {
-      const propBookings = filteredBookings.filter(b => b.propertyId === p.id && b.status !== "cancelled");
+      const propBookings = filteredBookings.filter(b => b.propertyId === p.id && !["cancelled", "blocked"].includes(b.status));
       const revenue = propBookings.reduce((sum, b) => sum + b.totalAmount, 0);
       return { propertyId: p.id, propertyName: p.name, revenue };
     }).filter(r => r.revenue > 0 || (propertyId && propertyId !== "all" && Number(propertyId) === r.propertyId));
@@ -1896,7 +1859,7 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
     const monthMap: Record<string, number> = {};
     const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     filteredBookings.forEach(b => {
-      if (b.status === "cancelled") return;
+      if (["cancelled", "blocked"].includes(b.status)) return;
       const d = new Date(b.checkIn);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       monthMap[key] = (monthMap[key] || 0) + b.totalAmount;
@@ -1913,39 +1876,18 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
       });
     }
 
-    const occupancyStart = startDate
-      ? new Date(`${String(startDate)}T00:00:00Z`).getTime()
-      : Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate());
-    const occupancyEnd = endDate
-      ? new Date(`${String(endDate)}T00:00:00Z`).getTime() + 86400000
-      : now.getTime();
-    const occupancyDays = Math.max(1, (occupancyEnd - occupancyStart) / 86400000);
-
-    // Occupancy stats per property based on booked unit-nights in the selected range.
+    // Occupancy stats per property (avg booking duration)
     const occupancyByProperty = allProperties.map(p => {
-      const propBookings = filteredBookings.filter(b => b.propertyId === p.id && b.status !== "cancelled");
+      const propBookings = filteredBookings.filter(b => b.propertyId === p.id && !["cancelled", "blocked"].includes(b.status));
       const totalNights = propBookings.reduce((sum, b) => {
         const nights = Math.round((new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime()) / 86400000);
         return sum + Math.max(nights, 0);
       }, 0);
       const avgDuration = propBookings.length > 0 ? Math.round((totalNights / propBookings.length) * 10) / 10 : 0;
-      const roomBased = p.bookingMode === "room_based" || p.bookingMode === "rooms";
-      const capacity = roomBased
-        ? Math.max(1, allRooms.filter(room => room.propertyId === p.id).reduce((sum, room) => sum + room.roomCount, 0))
-        : 1;
-      const occupiedUnitNights = allBookings
-        .filter(b => b.propertyId === p.id && b.status !== "cancelled")
-        .reduce((sum, b) => {
-          const bookingStart = new Date(`${b.checkIn}T00:00:00Z`).getTime();
-          const bookingEnd = new Date(`${b.checkOut}T00:00:00Z`).getTime();
-          const overlapDays = Math.max(0, (Math.min(bookingEnd, occupancyEnd) - Math.max(bookingStart, occupancyStart)) / 86400000);
-          const units = roomBased ? Math.max(b.roomCount ?? 1, 1) : 1;
-          return sum + overlapDays * units;
-        }, 0);
       return {
         propertyId: p.id,
         propertyName: p.name,
-        occupancyRate: Math.min(100, Math.round((occupiedUnitNights / (occupancyDays * capacity)) * 100)),
+        occupancyRate: occupancyPercent(allBookings.filter(b => b.propertyId === p.id), p.bookingMode === "whole" ? 1 : allRooms.filter(r => r.propertyId === p.id).reduce((n, r) => n + r.roomCount, 0), occupancyStart, occupancyEnd),
         avgBookingDuration: avgDuration,
         bookingCount: propBookings.length,
       };
@@ -1964,7 +1906,7 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
     // Busiest months
     const monthBookingCount: Record<string, number> = {};
     filteredBookings.forEach(b => {
-      if (b.status === "cancelled") return;
+      if (["cancelled", "blocked"].includes(b.status)) return;
       const d = new Date(b.checkIn);
       const label = monthLabels[d.getMonth()];
       monthBookingCount[label] = (monthBookingCount[label] || 0) + 1;
@@ -1972,20 +1914,20 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
     const busiestMonths = monthLabels.map(m => ({ month: m, bookings: monthBookingCount[m] || 0 }));
 
     // Average booking value
-    const completedOrCurrent = filteredBookings.filter(b => b.status !== "cancelled");
+    const completedOrCurrent = filteredBookings.filter(b => !["cancelled", "blocked"].includes(b.status));
     const avgBookingValue = completedOrCurrent.length > 0
       ? Math.round(completedOrCurrent.reduce((sum, b) => sum + b.totalAmount, 0) / completedOrCurrent.length)
       : 0;
 
-    // Profit per property using recorded expenses in the selected range.
+    // Profit based on recorded expenses; an empty expense ledger is not an estimate.
     const profitByProperty = allProperties.map(p => {
-      const propBookings = filteredBookings.filter(b => b.propertyId === p.id && b.status !== "cancelled");
+      const propBookings = filteredBookings.filter(b => b.propertyId === p.id && !["cancelled", "blocked"].includes(b.status));
       const revenue = propBookings.reduce((sum, b) => sum + b.totalAmount, 0);
-      const propertyExpenses = filteredExpenses
-        .filter(e => e.propertyId === p.id)
-        .reduce((sum, e) => sum + e.amount, 0);
-      const profit = revenue - propertyExpenses;
-      return { propertyId: p.id, propertyName: p.name, revenue, expenses: propertyExpenses, profit };
+      const recordedExpenses = allExpenses.filter(e => e.propertyId === p.id &&
+        (!startDate || e.date >= String(startDate)) && (!endDate || e.date <= String(endDate)));
+      const estimatedExpenses = recordedExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const profit = revenue - estimatedExpenses;
+      return { propertyId: p.id, propertyName: p.name, revenue, expenses: estimatedExpenses, profit };
     });
 
     // Top earning properties sorted by revenue
@@ -2000,6 +1942,8 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
       avgBookingValue,
       profitByProperty,
       topEarningProperties,
+      expenseDataComplete: false,
+      occupancyPeriod: { start: occupancyStart, endExclusive: occupancyEnd },
       totalBookings: completedOrCurrent.length,
       totalRevenue: completedOrCurrent.reduce((sum, b) => sum + b.totalAmount, 0),
     });

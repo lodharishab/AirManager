@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique, json, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, serial, boolean, unique, json, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,6 +21,7 @@ export const properties = pgTable("properties", {
   occupancyRate: integer("occupancy_rate").notNull().default(0),
   monthlyRevenue: integer("monthly_revenue").notNull().default(0),
   description: text("description"),
+  internalNotes: text("internal_notes"),
   propertyType: text("property_type").default("apartment"),
   bedrooms: integer("bedrooms").default(1),
   bathrooms: integer("bathrooms").default(1),
@@ -34,7 +35,7 @@ export const properties = pgTable("properties", {
   neighborhood: text("neighborhood"),
   bookingMode: text("booking_mode").notNull().default("whole"),
   icalToken: text("ical_token"),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("INR"),
   deletedAt: text("deleted_at"),
 }, (table) => ({
   nameAddressUnique: unique("properties_name_address_unique").on(table.name, table.address),
@@ -82,13 +83,9 @@ export const bookings = pgTable("bookings", {
   source: text("source").notNull().default("manual"),
   deletedAt: text("deleted_at"),
 }, (table) => ({
-  // Room-level uniqueness: a room-based property (e.g. Rivaan) legitimately hosts
-  // different guests in different rooms on the same night, so uniqueness is
-  // enforced per room (or per property for whole-property bookings where roomId
-  // is NULL) and only among active (non-deleted) bookings.
-  roomDatesUnique: uniqueIndex("bookings_room_dates_unique")
-    .on(sql`COALESCE(${table.roomId}, -${table.propertyId})`, table.checkIn, table.checkOut)
-    .where(sql`${table.deletedAt} IS NULL`),
+  // Capacity is validated under the booking write lock; identical date ranges
+  // can legitimately contain multiple reservations for a room type.
+  propertyDatesIndex: index("bookings_property_dates_idx").on(table.propertyId, table.checkIn, table.checkOut),
 }));
 
 export const externalCalendars = pgTable("external_calendars", {
@@ -340,7 +337,7 @@ export type Guest = typeof guests.$inferSelect;
 export type InsertGuest = z.infer<typeof insertGuestSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
-export type Property = typeof properties.$inferSelect;
+export type Property = typeof properties.$inferSelect & { totalRooms?: number };
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Room = typeof rooms.$inferSelect;
 export type InsertRoom = z.infer<typeof insertRoomSchema>;

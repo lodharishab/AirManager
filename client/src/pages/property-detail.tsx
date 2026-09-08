@@ -1,3 +1,4 @@
+import type { InsertProperty } from "@shared/schema";
 import { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useProperty, useUpdateProperty, useReviewsByProperty } from "@/lib/api";
@@ -29,7 +30,7 @@ export default function PropertyDetail() {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [enrichDialogOpen, setEnrichDialogOpen] = useState(false);
-  const [editData, setEditData] = useState<Record<string, any>>({});
+  const [editData, setEditData] = useState<Partial<InsertProperty>>({});
 
   const openEditDialog = () => {
     if (!property) return;
@@ -37,7 +38,7 @@ export default function PropertyDetail() {
       name: property.name,
       address: property.address,
       nightlyRate: property.nightlyRate,
-      currency: property.currency || "USD",
+      currency: property.currency || "INR",
       description: property.description || "",
       propertyType: property.propertyType || "apartment",
       bedrooms: property.bedrooms || 1,

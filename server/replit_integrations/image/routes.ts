@@ -1,3 +1,4 @@
+import { logError } from "../../logger";
 import type { Express, Request, Response } from "express";
 import { openai } from "./client";
 
@@ -26,7 +27,7 @@ export function registerImageRoutes(app: Express): void {
         b64_json: imageData.b64_json,
       });
     } catch (error) {
-      console.error("Error generating image:", error);
+      logError("Error generating image:", error);
       res.status(500).json({ error: "Failed to generate image" });
     }
   });

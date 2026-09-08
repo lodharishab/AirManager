@@ -21,3 +21,10 @@ export function logStructured(level: "info" | "warn" | "error", data: Record<str
     console.log(JSON.stringify(entry));
   }
 }
+
+function normalizeLogValue(value: unknown): unknown {
+  return value instanceof Error ? { message: value.message, name: value.name } : value;
+}
+export function logInfo(...details: unknown[]) { logStructured("info", { details: details.map(normalizeLogValue) }); }
+export function logWarning(...details: unknown[]) { logStructured("warn", { details: details.map(normalizeLogValue) }); }
+export function logError(...details: unknown[]) { logStructured("error", { details: details.map(normalizeLogValue) }); }

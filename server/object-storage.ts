@@ -1,3 +1,4 @@
+import { logWarning } from "./logger";
 import { Client } from "@replit/object-storage";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
@@ -13,7 +14,7 @@ function getClient(): Client {
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // Local fallback directory for environments without Replit object storage
 const LOCAL_UPLOAD_DIR = process.env.LOCAL_UPLOAD_DIR || "/opt/AirManager/uploads";
@@ -32,18 +33,19 @@ export function validateImageFile(file: { mimetype: string; size: number }): str
     return "Only JPEG, PNG, WebP images and MP4/MOV/WebM videos are accepted";
   }
   if (file.size > MAX_FILE_SIZE) {
-    return "File size must be under 100MB";
+    return "File size must be under 10MB";
   }
   return null;
 }
 
 export async function uploadImage(
   buffer: Buffer,
-  originalName: string,
+  _originalName: string,
   mimetype: string
 ): Promise<string> {
-  const isVideo = isVideoMime(mimetype);
-  const ext = originalName.split(".").pop()?.toLowerCase() || (isVideo ? "mp4" : "jpg");
+  const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
+  const ext = extensions[mimetype];
+  if (!ext) throw new Error("Unsupported media type");
   const uniqueName = `uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   // Try object storage first; fall back to local disk when it is unavailable
@@ -52,7 +54,7 @@ export async function uploadImage(
     if (result.ok) {
       return uniqueName;
     }
-    throw new Error((result.error as any)?.message || "Unknown object storage error");
+    throw new Error((result.error as { message?: string })?.message || "Unknown object storage error");
   } catch {
     const localFile = localPathFor(uniqueName);
     mkdirSync(path.dirname(localFile), { recursive: true });
@@ -65,10 +67,10 @@ export async function deleteImage(objectName: string): Promise<void> {
   try {
     const result = await getClient().delete(objectName);
     if (!result.ok) {
-      console.warn(`Failed to delete image from storage: ${objectName}`);
+      logWarning(`Failed to delete image from storage: ${objectName}`);
     }
   } catch {
-    console.warn(`Object storage unavailable; attempting local delete: ${objectName}`);
+    logWarning(`Object storage unavailable; attempting local delete: ${objectName}`);
   }
   try {
     const localFile = localPathFor(objectName);

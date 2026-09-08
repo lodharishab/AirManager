@@ -1,3 +1,4 @@
+import { logError } from "../logger";
 import { storage } from "../storage";
 import { aiChat, getAiConfig, type AiConfig } from "../ai/gateway";
 import type { Booking, PriceRecommendation, Property } from "@shared/schema";
@@ -165,7 +166,7 @@ export function startPricingScheduler(): NodeJS.Timeout {
         pricingRunInFlight = true;
         runPricingRecommendations()
           .catch((e) => {
-            console.error("Pricing recommendation run failed:", e);
+            logError("Pricing recommendation run failed:", e);
           })
           .finally(() => {
             pricingRunInFlight = false;

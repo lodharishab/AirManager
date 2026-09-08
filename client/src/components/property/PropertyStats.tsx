@@ -3,6 +3,8 @@ import { Bed, Bath, Users, Ruler, Clock, Calendar } from "lucide-react";
 
 interface PropertyStatsProps {
   property: {
+    bookingMode?: string;
+    totalRooms?: number;
     bedrooms?: number | null;
     bathrooms?: number | null;
     maxGuests?: number | null;
@@ -14,9 +16,9 @@ interface PropertyStatsProps {
 
 export function PropertyStats({ property }: PropertyStatsProps) {
   const stats = [
-    { icon: <Bed className="h-4 w-4" />, label: "Bedrooms", value: property.bedrooms || 1 },
+    { icon: <Bed className="h-4 w-4" />, label: property.bookingMode === "room_based" ? "Rooms" : "Bedrooms", value: property.bookingMode === "room_based" ? property.totalRooms ?? "Unverified" : property.bedrooms ?? "Unverified" },
     { icon: <Bath className="h-4 w-4" />, label: "Bathrooms", value: property.bathrooms || 1 },
-    { icon: <Users className="h-4 w-4" />, label: "Max Guests", value: property.maxGuests || 2 },
+    { icon: <Users className="h-4 w-4" />, label: "Max Guests", value: property.maxGuests ?? "Unverified" },
     { icon: <Ruler className="h-4 w-4" />, label: "Area", value: property.squareFeet ? `${property.squareFeet.toLocaleString()} sq ft` : "—" },
     { icon: <Clock className="h-4 w-4" />, label: "Check-in", value: property.checkInTime || "14:00" },
     { icon: <Calendar className="h-4 w-4" />, label: "Min Stay", value: `${property.minimumStay || 1} night${(property.minimumStay || 1) > 1 ? "s" : ""}` },

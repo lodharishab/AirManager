@@ -31,7 +31,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2 } from "lucide-react";
-import type { Booking, Property, Room } from "@shared/schema";
+import type { Booking, Room } from "@shared/schema";
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   current: { bg: "bg-emerald-500/80", border: "border-emerald-400", text: "text-emerald-400" },
@@ -72,8 +72,8 @@ export default function CalendarPage() {
   const { data: propertiesResult, isLoading: propertiesLoading } = useProperties({ page: 1, limit: 10000 });
   const { data: allRooms } = useAllRooms();
 
-  const bookings = bookingsResult?.data || [];
-  const properties = propertiesResult?.data || [];
+  const bookings = useMemo(() => bookingsResult?.data || [], [bookingsResult]);
+  const properties = useMemo(() => propertiesResult?.data || [], [propertiesResult]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -235,12 +235,12 @@ export default function CalendarPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b bg-card">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-11 w-11" onClick={handlePrevMonth} data-testid="button-prev-month">
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={handlePrevMonth} aria-label="Previous month" data-testid="button-prev-month">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" className="h-11 w-11" onClick={handleNextMonth} data-testid="button-next-month">
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={handleNextMonth} aria-label="Next month" data-testid="button-next-month">
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" className="min-h-[44px]" onClick={handleToday} data-testid="button-today">
@@ -253,7 +253,7 @@ export default function CalendarPage() {
             {format(currentDate, "MMMM yyyy")}
           </h2>
 
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             {Object.entries(STATUS_COLORS).map(([status, colors]) => (
               <div key={status} className="flex items-center gap-1.5">
                 <div className={`w-3 h-3 rounded-sm ${colors.bg}`} />
@@ -263,7 +263,8 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto" ref={scrollRef}>
+        <p className="px-4 py-2 text-xs text-muted-foreground">Scroll horizontally to see all dates. Select a booking to read its full details.</p>
+        <div className="overflow-x-auto" ref={scrollRef} role="region" aria-label="Scrollable availability calendar" tabIndex={0}>
           <div className="relative" style={{ minWidth: LABEL_WIDTH + daysInMonth.length * DAY_WIDTH }}>
             <div className="flex sticky top-0 z-10 bg-card border-b">
               <div
@@ -393,6 +394,7 @@ function BookingBarEl({
         <button
           className={`absolute rounded-md ${colors.bg} border ${colors.border} cursor-pointer hover:brightness-110 transition-all z-[3] flex items-center px-2 overflow-hidden`}
           style={{ left, width: Math.max(width, 20), top, height: 28 }}
+          aria-label={`${bar.booking.guestName}, ${bar.booking.checkIn} to ${bar.booking.checkOut}, ${bar.booking.status.replaceAll("_", " ")}`}
           data-testid={`booking-bar-${bar.booking.id}`}
         >
           <span className="text-[11px] font-medium text-white truncate">

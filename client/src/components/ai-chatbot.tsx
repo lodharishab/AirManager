@@ -40,15 +40,23 @@ export default function AIChatbot() {
     return conv.id;
   };
 
-  const handleSend = async () => {
-    if (!message.trim() || isStreaming) return;
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    window.addEventListener("airmanager:open-chat", open);
+    return () => window.removeEventListener("airmanager:open-chat", open);
+  }, []);
 
-    const userMessage = message.trim();
+  const handleSend = async (suggestion?: string) => {
+    if (!(suggestion ?? message).trim() || isStreaming) return;
+
+    const userMessage = (suggestion ?? message).trim();
     setMessage("");
 
     let convId = conversationId;
+    setIsStreaming(true);
     if (!convId) {
-      convId = await createConversation();
+      try { convId = await createConversation(); }
+      catch { setIsStreaming(false); setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: "Could not start the conversation. Please sign in and try again." }]); return; }
     }
 
     const userMsg: ChatMessage = {
@@ -73,6 +81,7 @@ export default function AIChatbot() {
         body: JSON.stringify({ content: userMessage }),
       });
 
+      if (!response.ok) throw new Error("AI request failed. Check Settings or sign in again.");
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader");
 
@@ -91,6 +100,9 @@ export default function AIChatbot() {
           if (!line.startsWith("data: ")) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            if (data.error) {
+              setMessages(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, content: String(data.error) } : m));
+            }
             if (data.content) {
               setMessages(prev => {
                 const updated = [...prev];
@@ -140,14 +152,15 @@ export default function AIChatbot() {
         <button
           data-testid="button-open-chatbot"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
+          aria-label="Open AI assistant"
+          className="hidden md:flex fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all items-center justify-center group"
         >
           <Sparkles className="h-6 w-6 group-hover:rotate-12 transition-transform" />
         </button>
       )}
 
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] h-[520px] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="fixed bottom-3 right-3 md:bottom-6 md:right-6 z-50 w-[min(380px,calc(100vw-24px))] h-[min(520px,calc(100dvh-80px))] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-secondary/30">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
@@ -196,11 +209,7 @@ export default function AIChatbot() {
                       key={suggestion}
                       data-testid={`button-suggestion-${suggestion.slice(0, 10)}`}
                       onClick={() => {
-                        setMessage(suggestion);
-                        setTimeout(() => {
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                          handleSend();
-                        }, 100);
+                        void handleSend(suggestion);
                       }}
                       className="w-full text-left text-xs p-3 rounded-xl border border-border/50 text-muted-foreground hover:bg-secondary/20 hover:text-foreground hover:border-primary/30 transition-all"
                     >
@@ -253,7 +262,7 @@ export default function AIChatbot() {
                 data-testid="button-send-chatbot"
                 size="icon"
                 className="absolute right-1 rounded-full w-8 h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={isStreaming || !message.trim()}
               >
                 {isStreaming ? (

@@ -1,16 +1,10 @@
+import type { GalleryImage } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Pencil, Trash2, ImageIcon } from "lucide-react";
 
-interface GalleryImage {
-  id: number;
-  imageUrl: string;
-  title?: string | null;
-  tags?: string[] | null;
-  starRating?: number | null;
-  propertyId?: number | null;
-}
+
 
 interface GalleryGridProps {
   images: GalleryImage[];

@@ -219,7 +219,7 @@ export function useCreateRoom() {
 
 export function useUpdateRoom() {
   return useMutation({
-    mutationFn: async ({ id, propertyId, ...data }: { id: number; propertyId: number; roomType?: string; roomCount?: number; nightlyRate?: number }) => {
+    mutationFn: async ({ id, propertyId: _propertyId, ...data }: { id: number; propertyId: number; roomType?: string; roomCount?: number; nightlyRate?: number }) => {
       const res = await apiRequest("PATCH", `/api/rooms/${id}`, data);
       return res.json();
     },
@@ -251,6 +251,9 @@ export function useCreateBooking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      for (const key of ["/api/analytics", "/api/properties", "/api/guests", "/api/guests/top", "/api/check-ins", "/api/notifications", "/api/notifications/unread-count", "/api/revenue"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/revenue-chart"] });
     },
@@ -278,6 +281,9 @@ export function useUpdateBooking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      for (const key of ["/api/analytics", "/api/properties", "/api/guests", "/api/guests/top", "/api/check-ins", "/api/notifications", "/api/notifications/unread-count", "/api/revenue"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/revenue-chart"] });
@@ -409,6 +415,7 @@ export function useCreateExpense() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
     },
   });
 }
@@ -421,6 +428,7 @@ export function useUpdateExpense() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
     },
   });
 }
@@ -432,6 +440,7 @@ export function useDeleteExpense() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
     },
   });
 }
