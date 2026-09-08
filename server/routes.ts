@@ -40,7 +40,7 @@ import {
   buildBookingConfirmationEmail,
   buildOverdueTaskEmail,
 } from "./email";
-import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isObjectStorageUrl, getMimeType } from "./object-storage";
+import { uploadImage, deleteImage, getImageBuffer, validateImageFile, isSafeUploadFilename, isObjectStorageUrl, getMimeType } from "./object-storage";
 import { aiChat, getAiConfig, saveAiConfig, testAiConnection, AI_PROVIDERS, type AiProvider } from "./ai/gateway";
 import { runFollowUpSweep } from "./followups/engine";
 import { runPricingRecommendations, approvePriceRecommendation, rejectPriceRecommendation } from "./pricing/engine";
@@ -257,7 +257,16 @@ async function trySendNotificationEmail(
       if (eventType === "booking" && !prefs.bookingAlerts) continue;
       if (eventType === "enquiry" && !prefs.messageAlerts) continue;
 
-      sendEmail(prefs.notificationEmail, emailData.subject, emailData.html).catch(() => {});
+      sendEmail(prefs.notificationEmail, emailData.subject, emailData.html).catch((err) => {
+        // Fire-and-forget must not mean failure-and-forgotten: record delivery
+        // failures so notification health stays observable in the journal.
+        logStructured("warn", {
+          context: "email",
+          message: "Notification email delivery failed",
+          recipient: prefs.notificationEmail,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
     }
   } catch (err) {
     logStructured("warn", {
@@ -377,7 +386,15 @@ export async function registerRoutes(
   }));
 
   app.get("/api/uploads/:filename", asyncHandler(async (req, res) => {
-    const objectName = "uploads/" + req.params.filename;
+    // Public media route (registered before requireAuth): validate the
+    // filename against the naming scheme uploads are written under so that
+    // traversal sequences, encoded separators and hidden files can never be
+    // joined into a filesystem path.
+    const filename = req.params.filename;
+    if (typeof filename !== "string" || !isSafeUploadFilename(filename)) {
+      return res.status(400).json({ message: "Invalid filename" });
+    }
+    const objectName = "uploads/" + filename;
     const buffer = await getImageBuffer(objectName);
     if (!buffer) {
       return res.status(404).json({ message: "Image not found" });

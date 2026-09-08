@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateImageFile } from "../server/object-storage";
+import { validateImageFile, isSafeUploadFilename } from "../server/object-storage";
 
 const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(16)]);
 const PNG = Buffer.concat([
@@ -60,5 +60,29 @@ describe("upload content verification", () => {
 
   it("rejects a truncated file too short to identify", () => {
     expect(validateImageFile(file("image/png", Buffer.from([0x89, 0x50])))).toMatch(/not a recognised/i);
+  });
+});
+
+describe("upload filename validation (path traversal guard)", () => {
+  it("accepts the server-generated and historical library naming schemes", () => {
+    expect(isSafeUploadFilename("1730142779492-a1b2c3.jpg")).toBe(true);
+    expect(isSafeUploadFilename("sonibagh-26.jpg")).toBe(true);
+    expect(isSafeUploadFilename("kubervatika-05.webp")).toBe(true);
+    expect(isSafeUploadFilename("rivaan-video-01.mp4")).toBe(true);
+  });
+
+  it("rejects traversal sequences in any encoding", () => {
+    expect(isSafeUploadFilename("../../etc/passwd")).toBe(false);
+    expect(isSafeUploadFilename("..%2f..%2fetc%2fhostname")).toBe(false);
+    expect(isSafeUploadFilename("a/../../etc/hostname")).toBe(false);
+    expect(isSafeUploadFilename("....//....//etc/passwd")).toBe(false);
+  });
+
+  it("rejects hidden files, separators and injection characters", () => {
+    expect(isSafeUploadFilename(".env")).toBe(false);
+    expect(isSafeUploadFilename("a/b.jpg")).toBe(false);
+    expect(isSafeUploadFilename("name with spaces.jpg")).toBe(false);
+    expect(isSafeUploadFilename("$(whoami).jpg")).toBe(false);
+    expect(isSafeUploadFilename("")).toBe(false);
   });
 });

@@ -22,6 +22,21 @@ function localPathFor(objectName: string): string {
 }
 
 /**
+ * Served via GET /api/uploads/:filename, which sits in front of requireAuth
+ * (property media must load inside the app). Upload names are
+ * server-generated (`<timestamp>-<random>.<ext>`) and the pre-existing
+ * library uses simple slugs (`sonibagh-26.jpg`), so anything containing a
+ * path separator, an encoded escape, a leading dot or other unusual
+ * character is rejected here before the name is ever joined into a
+ * filesystem path.
+ */
+const SAFE_UPLOAD_FILENAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/;
+
+export function isSafeUploadFilename(filename: string): boolean {
+  return SAFE_UPLOAD_FILENAME.test(filename);
+}
+
+/**
  * Content families we can recognise from a file signature. MP4 and QuickTime
  * share the ISO base media container and are only distinguished by an internal
  * brand, so they are deliberately treated as one family rather than rejecting
