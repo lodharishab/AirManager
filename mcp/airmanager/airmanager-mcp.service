@@ -1,0 +1,21 @@
+[Unit]
+Description=Air Manager MCP API adapter
+After=network.target airmanager.service
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/opt/airmanager-mcp
+EnvironmentFile=/etc/airmanager-mcp.env
+ExecStart=/usr/bin/node /opt/airmanager-mcp/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictSUIDSGID=yes
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target
