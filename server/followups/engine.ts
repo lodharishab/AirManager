@@ -1,4 +1,5 @@
 import { logError } from "../logger";
+import { runTracked } from "../scheduler-runs";
 import { storage} from "../storage";
 import { aiChat, getAiConfig, type AiConfig } from "../ai/gateway";
 import type { Enquiry, FollowUpRule, Property } from "@shared/schema";
@@ -126,7 +127,7 @@ export function startFollowUpScheduler(): NodeJS.Timeout {
     // Overlap guard: never run two sweeps concurrently (slow AI calls must not stack).
     if (sweepInFlight) return;
     sweepInFlight = true;
-    runFollowUpSweep()
+    runTracked("follow_up_sweep", runFollowUpSweep)
       .catch((e) => {
         logError("Follow-up sweep failed:", e);
       })
