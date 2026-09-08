@@ -95,6 +95,11 @@ app.use("/api/properties/:id/ai-enrich", aiLimiter);
 app.use("/api/gallery/import-drive", driveLimiter);
 
 const PgStore = connectPgSimple(session);
+const cookieSecure = process.env.COOKIE_SECURE === "true"
+  ? true
+  : process.env.COOKIE_SECURE === "false"
+    ? false
+    : config.isProduction;
 app.use(
   session({
     store: new PgStore({
@@ -106,8 +111,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: config.isProduction,
+      secure: cookieSecure,
       httpOnly: true,
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })
