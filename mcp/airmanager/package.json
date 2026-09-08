@@ -1,0 +1,1 @@
+{"name":"airmanager-mcp","version":"1.0.0","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"start":"node server.mjs","test":"node --test test.mjs"},"dependencies":{"@modelcontextprotocol/sdk":"^1.27.1","express":"^5.1.0","zod":"^3.25.76"}}

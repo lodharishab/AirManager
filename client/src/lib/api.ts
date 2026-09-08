@@ -935,7 +935,7 @@ export function useCreateTicket() {
   });
 }
 
-function ticketAction(action: string) {
+function useTicketAction(action: string) {
   return useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("POST", `/api/tickets/${id}/${action}`, {});
@@ -947,9 +947,9 @@ function ticketAction(action: string) {
   });
 }
 
-export const useResolveTicket = () => ticketAction("resolve");
-export const useCloseTicket = () => ticketAction("close");
-export const useEscalateTicket = () => ticketAction("escalate");
+export const useResolveTicket = () => useTicketAction("resolve");
+export const useCloseTicket = () => useTicketAction("close");
+export const useEscalateTicket = () => useTicketAction("escalate");
 
 export function useRunTriage() {
   return useMutation({

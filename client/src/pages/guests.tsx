@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useGuests, useCreateGuest, useDeleteGuest } from "@/lib/api";
+import { useGuests, useCreateGuest, useDeleteGuest, useProperties } from "@/lib/api";
+import { formatCurrency } from "@shared/currency";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,8 @@ export default function Guests() {
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
   });
+  const { data: propertiesResult } = useProperties({ page: 1, limit: 10000 });
+  const primaryCurrency = propertiesResult?.data[0]?.currency || "USD";
 
   const createGuest = useCreateGuest();
   const deleteGuest = useDeleteGuest();
@@ -271,7 +274,7 @@ export default function Guests() {
                     </TableCell>
                     <TableCell className="text-center font-semibold">{guest.totalStays}</TableCell>
                     <TableCell className="text-right font-semibold">
-                      ${(guest.totalSpent || 0).toLocaleString()}
+                      {formatCurrency(guest.totalSpent || 0, primaryCurrency)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {guest.lastVisit

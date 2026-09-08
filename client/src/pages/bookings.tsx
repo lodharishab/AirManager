@@ -544,7 +544,7 @@ export default function Bookings() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold">${booking.totalAmount.toLocaleString()}</p>
+                    <p className="font-semibold">{formatCurrency(booking.totalAmount, property?.currency)}</p>
                     <a href={`/invoice/${booking.id}`} target="_blank" rel="noopener noreferrer">
                       <Button
                         data-testid={`button-invoice-mobile-${booking.id}`}

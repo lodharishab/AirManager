@@ -681,6 +681,9 @@ export async function registerRoutes(
   }));
 
   app.post("/api/properties", asyncHandler(async (req, res) => {
+    if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) {
+      return res.status(400).json({ message: "Booking mode must be whole or room_based" });
+    }
     const parsed = insertPropertySchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
     const property = await storage.createProperty(parsed.data);
@@ -688,6 +691,9 @@ export async function registerRoutes(
   }));
 
   app.patch("/api/properties/:id", asyncHandler(async (req, res) => {
+    if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) {
+      return res.status(400).json({ message: "Booking mode must be whole or room_based" });
+    }
     const parsed = insertPropertySchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
     const updated = await storage.updateProperty(Number(req.params.id), parsed.data);
@@ -1851,13 +1857,17 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
     const propertiesResult = await storage.getProperties({ page: 1, limit: 10000 });
     const allProperties = propertiesResult.data;
     const allBookings = await storage.getAllBookings();
+    const allRooms = await storage.getAllRooms();
+    const allExpenses = (await storage.getExpenses({ page: 1, limit: 10000 })).data;
 
     let filteredBookings = allBookings;
+    let filteredExpenses = allExpenses;
 
     // Filter by property if requested
     if (propertyId && propertyId !== "all") {
       const pid = Number(propertyId);
       filteredBookings = filteredBookings.filter(b => b.propertyId === pid);
+      filteredExpenses = filteredExpenses.filter(e => e.propertyId === pid);
     }
 
     // Filter by date range if requested
@@ -1866,6 +1876,11 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
         const checkIn = new Date(b.checkIn);
         if (startDate && checkIn < new Date(String(startDate))) return false;
         if (endDate && checkIn > new Date(String(endDate))) return false;
+        return true;
+      });
+      filteredExpenses = filteredExpenses.filter(e => {
+        if (startDate && e.date < String(startDate)) return false;
+        if (endDate && e.date > String(endDate)) return false;
         return true;
       });
     }
@@ -1898,7 +1913,15 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
       });
     }
 
-    // Occupancy stats per property (avg booking duration)
+    const occupancyStart = startDate
+      ? new Date(`${String(startDate)}T00:00:00Z`).getTime()
+      : Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate());
+    const occupancyEnd = endDate
+      ? new Date(`${String(endDate)}T00:00:00Z`).getTime() + 86400000
+      : now.getTime();
+    const occupancyDays = Math.max(1, (occupancyEnd - occupancyStart) / 86400000);
+
+    // Occupancy stats per property based on booked unit-nights in the selected range.
     const occupancyByProperty = allProperties.map(p => {
       const propBookings = filteredBookings.filter(b => b.propertyId === p.id && b.status !== "cancelled");
       const totalNights = propBookings.reduce((sum, b) => {
@@ -1906,10 +1929,23 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
         return sum + Math.max(nights, 0);
       }, 0);
       const avgDuration = propBookings.length > 0 ? Math.round((totalNights / propBookings.length) * 10) / 10 : 0;
+      const roomBased = p.bookingMode === "room_based" || p.bookingMode === "rooms";
+      const capacity = roomBased
+        ? Math.max(1, allRooms.filter(room => room.propertyId === p.id).reduce((sum, room) => sum + room.roomCount, 0))
+        : 1;
+      const occupiedUnitNights = allBookings
+        .filter(b => b.propertyId === p.id && b.status !== "cancelled")
+        .reduce((sum, b) => {
+          const bookingStart = new Date(`${b.checkIn}T00:00:00Z`).getTime();
+          const bookingEnd = new Date(`${b.checkOut}T00:00:00Z`).getTime();
+          const overlapDays = Math.max(0, (Math.min(bookingEnd, occupancyEnd) - Math.max(bookingStart, occupancyStart)) / 86400000);
+          const units = roomBased ? Math.max(b.roomCount ?? 1, 1) : 1;
+          return sum + overlapDays * units;
+        }, 0);
       return {
         propertyId: p.id,
         propertyName: p.name,
-        occupancyRate: p.occupancyRate,
+        occupancyRate: Math.min(100, Math.round((occupiedUnitNights / (occupancyDays * capacity)) * 100)),
         avgBookingDuration: avgDuration,
         bookingCount: propBookings.length,
       };
@@ -1941,13 +1977,15 @@ Respond ONLY with valid JSON. No markdown, no code blocks, just the JSON object.
       ? Math.round(completedOrCurrent.reduce((sum, b) => sum + b.totalAmount, 0) / completedOrCurrent.length)
       : 0;
 
-    // Profit per property (using monthlyRevenue from property as proxy for expenses = 30% of revenue)
+    // Profit per property using recorded expenses in the selected range.
     const profitByProperty = allProperties.map(p => {
       const propBookings = filteredBookings.filter(b => b.propertyId === p.id && b.status !== "cancelled");
       const revenue = propBookings.reduce((sum, b) => sum + b.totalAmount, 0);
-      const estimatedExpenses = Math.round(revenue * 0.3);
-      const profit = revenue - estimatedExpenses;
-      return { propertyId: p.id, propertyName: p.name, revenue, expenses: estimatedExpenses, profit };
+      const propertyExpenses = filteredExpenses
+        .filter(e => e.propertyId === p.id)
+        .reduce((sum, e) => sum + e.amount, 0);
+      const profit = revenue - propertyExpenses;
+      return { propertyId: p.id, propertyName: p.name, revenue, expenses: propertyExpenses, profit };
     });
 
     // Top earning properties sorted by revenue

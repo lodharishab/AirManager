@@ -1,0 +1,11 @@
+import {readFileSync,writeFileSync,existsSync,chmodSync} from 'node:fs';
+const path='/root/.openclaw/openclaw.json';
+const envPath='/root/.openclaw/.env';
+const config=JSON.parse(readFileSync(path));
+const client=JSON.parse(readFileSync('/etc/airmanager-mcp-clients/openclaw.json'));
+let env=existsSync(envPath)?readFileSync(envPath,'utf8'):'';
+if(!/^AIRMANAGER_MCP_AUTHORIZATION=/m.test(env)) env+='\nAIRMANAGER_MCP_AUTHORIZATION="'+client.headers.Authorization+'"\n';
+writeFileSync(envPath,env,{mode:0o600}); chmodSync(envPath,0o600);
+config.mcp.servers.airmanager.headers.Authorization='${AIRMANAGER_MCP_AUTHORIZATION}';
+writeFileSync(path,JSON.stringify(config,null,2)+'\n',{mode:0o600}); chmodSync(path,0o600);
+console.log('OpenClaw now uses its global environment file for the MCP credential.');
