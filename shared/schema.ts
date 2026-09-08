@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, date, timestamp, serial, boolean, unique, json, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -82,7 +82,13 @@ export const bookings = pgTable("bookings", {
   source: text("source").notNull().default("manual"),
   deletedAt: text("deleted_at"),
 }, (table) => ({
-  propertyDatesUnique: unique("bookings_property_dates_unique").on(table.propertyId, table.checkIn, table.checkOut),
+  // Room-level uniqueness: a room-based property (e.g. Rivaan) legitimately hosts
+  // different guests in different rooms on the same night, so uniqueness is
+  // enforced per room (or per property for whole-property bookings where roomId
+  // is NULL) and only among active (non-deleted) bookings.
+  roomDatesUnique: uniqueIndex("bookings_room_dates_unique")
+    .on(sql`COALESCE(${table.roomId}, -${table.propertyId})`, table.checkIn, table.checkOut)
+    .where(sql`${table.deletedAt} IS NULL`),
 }));
 
 export const externalCalendars = pgTable("external_calendars", {
