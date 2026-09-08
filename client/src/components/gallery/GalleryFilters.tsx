@@ -91,7 +91,7 @@ export function GalleryFilters({
       )}
 
       <span className="text-xs text-muted-foreground ml-auto">
-        {filteredCount} image{filteredCount !== 1 ? "s" : ""}
+        {filteredCount} item{filteredCount !== 1 ? "s" : ""}
       </span>
     </div>
   );
