@@ -33,6 +33,30 @@ Client initial JS went from 1,322 kB to 383 kB (356 kB to 119 kB gzipped)
 across 60 on-demand chunks. The server bundle is unchanged in size (~1.47 MB);
 externalising `./vite` removed warnings, not weight.
 
+## Follow-up fixes (8 September, evening audit)
+
+An independent multi-agent audit the same evening found two further items,
+both fixed and deployed before commit (see `fix/audit-followups-2` on
+`main`):
+
+- **Unauthenticated path traversal in `GET /api/uploads/:filename`** — the
+  route is registered before `requireAuth` and Express 5 decodes `%2f`, so
+  an unauthenticated caller could read arbitrary files via `../` sequences
+  (verified live: `/etc/hostname` readable with no credentials; a one-level
+  `..%2f.env` would have reached `.env`). Filenames are now whitelisted to
+  `^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$` in `server/object-storage.ts` and
+  rejected with 400 before any path join. Three regression tests added
+  (191 → 194).
+- **Fire-and-forget email failures are no longer silent** — the
+  `sendEmail(...).catch` in the notification helper now logs a structured
+  warn with recipient and error.
+
+Also fixed outside the repo (infrastructure): the n8n Docker container
+published `0.0.0.0:5678`, which bypassed UFW (Docker installs its own
+PREROUTING rules) and exposed the n8n editor to the public internet.
+`/opt/n8n/docker-compose.yml` now binds the port to `127.0.0.1` and the
+tailnet IP only.
+
 ## Correction to the previous handover
 
 `docs/HANDOVER-20260908.md` states "Strict ESLint passed with zero errors and
@@ -74,9 +98,10 @@ Fixed in `a0cc309`. CI now prevents the claim from drifting from reality again.
    (expenses/pricing), enquiries/follow-ups, notifications/conversations, auth
    and preferences, admin (settings/export/dashboard/health). Mirror the same
    domains under `server/storage/`. The 191 existing tests are the safety net.
-2. **Fire-and-forget email.** The `.catch(() => {})` at `server/routes.ts:259`
-   discards delivery failures entirely. Worth recording failures the way
-   `scheduler_runs` now records job outcomes.
+2. **Fire-and-forget email — closed 8 September.** Delivery failures now
+   log a structured warn (see follow-up fixes above). Persisting failures to
+   a table the way `scheduler_runs` records job outcomes remains optional
+   future work if ever needed.
 3. **Media transcoding** is not implemented. Uploads are now verified by magic
    bytes (`server/object-storage.ts`) but never re-encoded or normalised.
 4. **Scheduler observation.** `scheduler_runs` now records start, finish,
