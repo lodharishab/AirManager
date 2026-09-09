@@ -16,3 +16,5 @@ uploads/
 
 .env.test
 ._*
+
+.claude/
