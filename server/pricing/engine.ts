@@ -185,6 +185,15 @@ export async function approvePriceRecommendation(id: number): Promise<PriceRecom
   if (!rec) return undefined;
 
   const property = await storage.getProperty(rec.propertyId);
+  if (property?.minNightlyRate != null && rec.recommendedPrice < property.minNightlyRate) {
+    // Floor raised after the recommendation was created — refuse to apply it.
+    await storage.updatePriceRecommendation(id, {
+      status: "rejected",
+      reviewedAt: new Date().toISOString(),
+      reason: rec.reason + " (rejected: below owner floor of ₹" + property.minNightlyRate + ")",
+    });
+    return undefined;
+  }
   if (property && rec.recommendedPrice !== property.nightlyRate) {
     await storage.updateProperty(rec.propertyId, { nightlyRate: rec.recommendedPrice });
   }

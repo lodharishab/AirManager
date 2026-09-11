@@ -724,6 +724,16 @@ export async function registerRoutes(
     if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) return res.status(400).json({ message: "Booking mode must be whole or room_based" });
     const parsed = insertPropertySchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const existingProperty = await storage.getProperty(Number(req.params.id));
+    if (
+      typeof parsed.data.nightlyRate === "number" &&
+      existingProperty?.minNightlyRate != null &&
+      parsed.data.nightlyRate < existingProperty.minNightlyRate
+    ) {
+      return res.status(400).json({
+        message: `Nightly rate cannot go below the owner floor of ₹${existingProperty.minNightlyRate}`,
+      });
+    }
     const updated = await storage.updateProperty(Number(req.params.id), parsed.data);
     if (!updated) return res.status(404).json({ message: "Property not found" });
     res.json(updated);

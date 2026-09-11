@@ -3,6 +3,36 @@
 Last updated: 8 September 2026, after deploying `e0a8ade` (PR #3) and
 auditing the MCP server (PR #5).
 
+## Status update — 11 September 2026
+
+Closed since the last update:
+
+- **PR #5** (`docs(mcp): correct security posture after public endpoint was
+  added`) merged.
+- **Owner floor pricing shipped.** New nullable `properties.min_nightly_rate`
+  column, enforced at three points: price-recommendation creation (clamped
+  up to the floor with a note in the reason), recommendation approval
+  (auto-rejected if the floor was raised after creation), and manual
+  `PATCH /api/properties/:id` (400 with a clear message). Backfilled:
+  Rivaan ₹3,500, Soni Bagh ₹15,000. Kuber Vatika floor unset — owner to
+  confirm. Verified live: PATCH below floor → 400, at/above floor → 200.
+- **Rivaan room restructure complete.** 11 individual rooms (Garden Room,
+  Hill-View Room, Deluxe Room 01–09), each room_count=1 at ₹3,500 — total
+  capacity 11. Physical room numbers still to be renamed once the owner
+  supplies the real ground-truth list.
+- **Data audit clean (11 Sep):** 3 properties, 11 rooms on property 5, 16
+  bookings (13 completed + 1 cancelled + 1 upcoming on Rivaan, 1 completed
+  on Soni Bagh), zero orphan bookings, no duplicate room types, all
+  post-PR3 tables populated (tickets 2, price_recommendations 3,
+  scheduler_runs 3).
+- **Hygiene:** duplicate `upstream` remote removed; stale branches `demo`
+  and `copilot/understand-codebase-structure` deleted; stray
+  `.gitignore.txt` removed.
+
+Still open (unchanged): routes/storage module split, off-server backup
+destination (owner decision), n8n MCP client token rotation (n8n UI), and
+the owner-data items below.
+
 This picks up where `docs/HANDOVER-20260908.md` left off. That document's
 "Remaining engineering work" list is now mostly closed; what follows is what
 is genuinely still open.

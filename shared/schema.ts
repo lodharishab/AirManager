@@ -32,6 +32,7 @@ export const properties = pgTable("properties", {
   name: text("name").notNull(),
   address: text("address").notNull(),
   nightlyRate: integer("nightly_rate").notNull(),
+  minNightlyRate: integer("min_nightly_rate"),
   imageUrl: text("image_url"),
   status: text("status").notNull().default("active"),
   occupancyRate: integer("occupancy_rate").notNull().default(0),
