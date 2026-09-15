@@ -2,6 +2,7 @@ export { PropertyHeader } from "./PropertyHeader";
 export { PropertyHero } from "./PropertyHero";
 export { PropertyStats } from "./PropertyStats";
 export { PropertyAbout } from "./PropertyAbout";
+export { PropertyFacts } from "./PropertyFacts";
 export { PropertyRooms } from "./PropertyRooms";
 export { PropertyBookings } from "./PropertyBookings";
 export { PropertyReviews } from "./PropertyReviews";

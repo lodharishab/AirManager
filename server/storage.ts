@@ -2,12 +2,13 @@ import { validateDates, validateTransition, validateCapacity, peakUnits, occupan
 import { eq, desc, isNull, and, or, lt, gt, sql, ilike, gte, lte, asc } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, properties, propertyLinks, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
+  users, properties, propertyLinks, propertyFacts, bookings, messages, conversations, revenueData, galleryImages, expenses, enquiries, rooms, reviews, housekeepingTasks, notifications, userPreferences, guests, externalCalendars, appSettings,
   followUpRules, followUps, priceRecommendations, tickets, ticketEvents,
   type User, type InsertUser,
   type Property, type InsertProperty,
   type Room, type InsertRoom,
   type PropertyLink, type InsertPropertyLink,
+  type PropertyFact, type InsertPropertyFact,
   type Booking, type InsertBooking,
   type Message, type InsertMessage,
   type Conversation, type InsertConversation,
@@ -101,6 +102,11 @@ export interface IStorage {
   createPropertyLink(link: InsertPropertyLink): Promise<PropertyLink>;
   updatePropertyLink(id: number, data: Partial<InsertPropertyLink>): Promise<PropertyLink | undefined>;
   deletePropertyLink(id: number): Promise<void>;
+
+  getPropertyFacts(propertyId: number): Promise<PropertyFact[]>;
+  createPropertyFact(fact: InsertPropertyFact): Promise<PropertyFact>;
+  updatePropertyFact(id: number, data: Partial<InsertPropertyFact>): Promise<PropertyFact | undefined>;
+  deletePropertyFact(id: number): Promise<void>;
 
   getBookings(params?: BookingSearchParams): Promise<PaginatedResult<Booking>>;
   getBooking(id: number): Promise<Booking | undefined>;
@@ -299,6 +305,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(galleryImages).where(eq(galleryImages.propertyId, id));
     await db.delete(rooms).where(eq(rooms.propertyId, id));
     await db.delete(propertyLinks).where(eq(propertyLinks.propertyId, id));
+    await db.delete(propertyFacts).where(eq(propertyFacts.propertyId, id));
     await db.update(properties).set({ deletedAt: now }).where(eq(properties.id, id));
   }
 
@@ -345,6 +352,24 @@ export class DatabaseStorage implements IStorage {
 
   async deletePropertyLink(id: number): Promise<void> {
     await db.delete(propertyLinks).where(eq(propertyLinks.id, id));
+  }
+
+  async getPropertyFacts(propertyId: number): Promise<PropertyFact[]> {
+    return db.select().from(propertyFacts).where(eq(propertyFacts.propertyId, propertyId)).orderBy(desc(propertyFacts.observedAt), asc(propertyFacts.label));
+  }
+
+  async createPropertyFact(fact: InsertPropertyFact): Promise<PropertyFact> {
+    const [created] = await db.insert(propertyFacts).values(fact).returning();
+    return created;
+  }
+
+  async updatePropertyFact(id: number, data: Partial<InsertPropertyFact>): Promise<PropertyFact | undefined> {
+    const [updated] = await db.update(propertyFacts).set(data).where(eq(propertyFacts.id, id)).returning();
+    return updated;
+  }
+
+  async deletePropertyFact(id: number): Promise<void> {
+    await db.delete(propertyFacts).where(eq(propertyFacts.id, id));
   }
 
   async getAllBookings(): Promise<Booking[]> {

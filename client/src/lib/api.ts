@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "./queryClient";
 import { queryClient } from "./queryClient";
-import type { Property, PropertyLink, Booking, InsertBooking, Conversation, Message, RevenueData, GalleryImage, Expense, InsertExpense, Enquiry, Room, Review, HousekeepingTask, Notification, Guest, ExternalCalendar, FollowUp, FollowUpRule, PriceRecommendation, Ticket, TicketEvent } from "@shared/schema";
+import type { Property, PropertyLink, PropertyFact, Booking, InsertBooking, Conversation, Message, RevenueData, GalleryImage, Expense, InsertExpense, Enquiry, Room, Review, HousekeepingTask, Notification, Guest, ExternalCalendar, FollowUp, FollowUpRule, PriceRecommendation, Ticket, TicketEvent } from "@shared/schema";
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -126,7 +126,7 @@ export function useDeleteProperty() {
 }
 
 export function useProperty(id: number | undefined) {
-  return useQuery<Property & { links: PropertyLink[]; bookings: Booking[]; rooms: Room[]; externalCalendars: ExternalCalendar[] }>({
+  return useQuery<Property & { links: PropertyLink[]; facts: PropertyFact[]; bookings: Booking[]; rooms: Room[]; externalCalendars: ExternalCalendar[] }>({
     queryKey: ["/api/properties", id],
     enabled: !!id,
   });

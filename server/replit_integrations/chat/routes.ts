@@ -86,12 +86,24 @@ export function registerChatRoutes(app: Express): void {
     const messages = await chatStorage.getMessagesByConversation(conversationId);
     const properties = (await storage.getProperties({ limit: 10000 })).data;
     const allBookings = await storage.getAllBookings();
+    const propertyFacts = (await Promise.all(properties.map(async (property) => ({
+      propertyId: property.id,
+      facts: await storage.getPropertyFacts(property.id),
+    })))).flatMap(({ propertyId, facts }) => facts.map((fact) => ({
+      propertyId,
+      category: fact.category,
+      label: fact.label,
+      value: fact.value,
+      status: fact.status,
+      observedAt: fact.observedAt,
+    })));
     const terms = content.toLowerCase().split(/\W+/).filter((word: string) => word.length > 2);
     const relevant = allBookings.filter(b => terms.some((word: string) => b.guestName.toLowerCase().includes(word)));
     const recent = [...allBookings].sort((a, b) => b.checkIn.localeCompare(a.checkIn)).slice(0, 100);
     const selected = Array.from(new Map([...relevant, ...recent].map(b => [b.id, b])).values()).slice(0, 150);
     const context = JSON.stringify({ today: businessToday(), totalBookingRecords: allBookings.length,
-      includedBookingRecords: selected.length, properties: properties.map(p => ({ id: p.id, name: p.name, currency: p.currency, bookingMode: p.bookingMode, occupancyRate: p.occupancyRate })),
+      includedBookingRecords: selected.length, properties: properties.map(p => ({ id: p.id, name: p.name, currency: p.currency, bookingMode: p.bookingMode, occupancyRate: p.occupancyRate, minNightlyRate: p.minNightlyRate, maxGuests: p.maxGuests, houseRules: p.houseRules })),
+      propertyFacts,
       bookings: selected.map(b => ({ id: b.id, propertyId: b.propertyId, guestName: b.guestName, checkIn: b.checkIn, checkOut: b.checkOut, status: b.status, totalAmount: b.totalAmount, roomCount: b.roomCount })) });
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: SYSTEM_PROMPT },

@@ -176,6 +176,32 @@ describe("Property Routes", () => {
     expect(res.body.name).toBe("Fetch Me");
   });
 
+  it("stores property facts and returns them with property details", async () => {
+    const agent = request.agent(app);
+    await registerAndLogin(agent, "propertyfacts", "password123");
+    const prop = await storage.createProperty(makeProperty({ name: "Facts Property" }));
+    const created = await agent.post(`/api/properties/${prop.id}/facts`).send({
+      factKey: "channel-policy",
+      category: "policy",
+      label: "Channel policy",
+      value: "Advance payment only",
+      status: "verified",
+      observedAt: "2026-09-09",
+      source: "owner record",
+    });
+    expect(created.status).toBe(201);
+
+    const detail = await agent.get(`/api/properties/${prop.id}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.facts).toEqual([
+      expect.objectContaining({ factKey: "channel-policy", value: "Advance payment only" }),
+    ]);
+
+    const updated = await agent.patch(`/api/property-facts/${created.body.id}`).send({ status: "historical" });
+    expect(updated.status).toBe(200);
+    expect(updated.body.status).toBe("historical");
+  });
+
   it("GET /api/properties/:id - returns 404 for non-existent", async () => {
     const agent = request.agent(app);
     await registerAndLogin(agent, "propuser5", "password123");

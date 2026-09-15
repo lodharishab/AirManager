@@ -194,7 +194,7 @@ export default function Properties() {
                 </div>
                 {newProperty.bookingMode === "whole" && (
                   <div className="space-y-2">
-                    <Label>Nightly Rate ({SUPPORTED_CURRENCIES.find(c => c.code === newProperty.currency)?.symbol || "$"})</Label>
+                    <Label>Nightly Rate ({SUPPORTED_CURRENCIES.find(c => c.code === newProperty.currency)?.symbol || "₹"})</Label>
                     <Input
                       data-testid="input-property-rate"
                       type="number"

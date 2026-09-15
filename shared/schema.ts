@@ -74,6 +74,21 @@ export const propertyLinks = pgTable("property_links", {
   linkType: text("link_type").notNull().default("other"),
 });
 
+export const propertyFacts = pgTable("property_facts", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  factKey: text("fact_key").notNull(),
+  category: text("category").notNull(),
+  label: text("label").notNull(),
+  value: text("value").notNull(),
+  status: text("status").notNull().default("verified"),
+  observedAt: text("observed_at").notNull(),
+  source: text("source").notNull(),
+  metadata: json("metadata"),
+}, (table) => ({
+  propertyFactUnique: unique("property_facts_property_key_unique").on(table.propertyId, table.factKey),
+}));
+
 export const guests = pgTable("guests", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -184,6 +199,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true, deletedAt: true, icalToken: true });
 export const insertRoomSchema = createInsertSchema(rooms).omit({ id: true });
 export const insertPropertyLinkSchema = createInsertSchema(propertyLinks).omit({ id: true });
+export const insertPropertyFactSchema = createInsertSchema(propertyFacts).omit({ id: true });
 export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, deletedAt: true });
 export const insertExternalCalendarSchema = createInsertSchema(externalCalendars).omit({ id: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true });
@@ -360,6 +376,8 @@ export type Room = typeof rooms.$inferSelect;
 export type InsertRoom = z.infer<typeof insertRoomSchema>;
 export type PropertyLink = typeof propertyLinks.$inferSelect;
 export type InsertPropertyLink = z.infer<typeof insertPropertyLinkSchema>;
+export type PropertyFact = typeof propertyFacts.$inferSelect;
+export type InsertPropertyFact = z.infer<typeof insertPropertyFactSchema>;
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type Message = typeof messages.$inferSelect;

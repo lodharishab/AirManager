@@ -13,6 +13,7 @@ import {
   insertPropertySchema,
   insertRoomSchema,
   insertPropertyLinkSchema,
+  insertPropertyFactSchema,
   insertBookingSchema,
   insertMessageSchema,
   insertConversationSchema,
@@ -709,7 +710,8 @@ export async function registerRoutes(
     const propertyBookings = allBookings.filter(b => b.propertyId === property.id);
     const rooms = await storage.getRoomsByProperty(property.id);
     const externalCalendars = await storage.getExternalCalendars(property.id);
-    res.json({ ...property, links, bookings: propertyBookings, rooms, externalCalendars });
+    const facts = await storage.getPropertyFacts(property.id);
+    res.json({ ...property, links, bookings: propertyBookings, rooms, externalCalendars, facts });
   }));
 
   app.post("/api/properties", asyncHandler(async (req, res) => {
@@ -777,6 +779,29 @@ export async function registerRoutes(
 
   app.delete("/api/property-links/:id", asyncHandler(async (req, res) => {
     await storage.deletePropertyLink(Number(req.params.id));
+    res.status(204).send();
+  }));
+
+  app.get("/api/properties/:id/facts", asyncHandler(async (req, res) => {
+    res.json(await storage.getPropertyFacts(Number(req.params.id)));
+  }));
+
+  app.post("/api/properties/:id/facts", asyncHandler(async (req, res) => {
+    const parsed = insertPropertyFactSchema.safeParse({ ...req.body, propertyId: Number(req.params.id) });
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.status(201).json(await storage.createPropertyFact(parsed.data));
+  }));
+
+  app.patch("/api/property-facts/:id", asyncHandler(async (req, res) => {
+    const parsed = insertPropertyFactSchema.partial().omit({ propertyId: true }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updatePropertyFact(Number(req.params.id), parsed.data);
+    if (!updated) return res.status(404).json({ message: "Property fact not found" });
+    res.json(updated);
+  }));
+
+  app.delete("/api/property-facts/:id", asyncHandler(async (req, res) => {
+    await storage.deletePropertyFact(Number(req.params.id));
     res.status(204).send();
   }));
 
@@ -1519,6 +1544,7 @@ export async function registerRoutes(
       address: property.address,
       description: property.description,
       propertyType: property.propertyType,
+      currency: property.currency,
       nightlyRate: property.nightlyRate,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
@@ -1548,7 +1574,7 @@ The fields you can return are:
 - name (string): Property name
 - description (string): A compelling, detailed description
 - propertyType (string): one of "apartment", "haveli", "villa", "studio", "bungalow", "penthouse"
-- nightlyRate (number): Nightly rate in USD ($)
+- nightlyRate (number): Nightly rate in the property's configured currency (${property.currency || "INR"})
 - bedrooms (number)
 - bathrooms (number)
 - maxGuests (number)
