@@ -80,3 +80,9 @@ ON CONFLICT(property_id, fact_key) DO UPDATE SET
   metadata = excluded.metadata;
 
 COMMIT;
+
+-- NOTE (2026-09-16): Data rows for unresolved verification tickets and property facts
+-- (guest names, rates, listing IDs) are intentionally NOT committed to this public
+-- repository. They are archived in the Zoella Stays vault:
+--   Zoella/2026-09-15-hermes-reconciliation-pending-tickets.sql
+-- and are applied directly to the database when verified. Zoella-stays branch policy.
