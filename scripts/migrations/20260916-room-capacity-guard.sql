@@ -74,8 +74,10 @@ BEGIN
 END $$;
 
 DROP TRIGGER IF EXISTS airmanager_room_guard_update ON rooms;
+-- NOTE: Postgres does not allow transition tables on `UPDATE OF <column>` triggers,
+-- so this fires on any rooms update; the capacity re-check is cheap and idempotent.
 CREATE TRIGGER airmanager_room_guard_update
-AFTER UPDATE OF room_count ON rooms
+AFTER UPDATE ON rooms
 REFERENCING NEW TABLE AS new_rooms OLD TABLE AS old_rooms
 FOR EACH STATEMENT EXECUTE FUNCTION airmanager_room_guard();
 
