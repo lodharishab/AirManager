@@ -1,11 +1,30 @@
 import type { Booking, Property } from "@shared/schema";
 
+// Date-only values must never round-trip through a timezone-dependent Date:
+// `new Date("YYYY-MM-DD")` is UTC midnight, so getFullYear()/getMonth() shift the
+// date by one day on any host running east of UTC (e.g. Asia/Kolkata), and local
+// midnight construction shifts it back when converted with toISOString().
+function isoDateFromIcal(value: string): string {
+  const v = value.trim();
+  const compact = v.match(/^(\d{4})(\d{2})(\d{2})(?:[T\s]|$)/);
+  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
+  const dashed = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dashed) return `${dashed[1]}-${dashed[2]}-${dashed[3]}`;
+  // Values carrying a time component carry their own timezone semantics; UTC
+  // conversion is correct for those.
+  const parsed = new Date(v);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return v;
+}
+
+function addDaysIso(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
 function formatDateValue(dateStr: string): string {
-  const d = new Date(dateStr);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}${month}${day}`;
+  const iso = isoDateFromIcal(dateStr);
+  return iso.replaceAll("-", "");
 }
 
 function escapeIcalText(text: string): string {
@@ -85,15 +104,13 @@ export function parseIcal(icalData: string): ParsedEvent[] {
 
     if (dtstart) {
       if (!dtend) {
-        const d = parseDateValue(dtstart);
-        d.setDate(d.getDate() + 1);
-        dtend = d.toISOString().split("T")[0];
+        dtend = addDaysIso(isoDateFromIcal(dtstart), 1);
       }
       events.push({
         uid: uid || `imported-${Date.now()}-${i}`,
         summary,
-        dtstart: parseDateValue(dtstart).toISOString().split("T")[0],
-        dtend: parseDateValue(dtend).toISOString().split("T")[0],
+        dtstart: isoDateFromIcal(dtstart),
+        dtend: isoDateFromIcal(dtend),
       });
     }
   }
@@ -110,15 +127,4 @@ function extractDateValue(line: string): string {
   const colonIdx = line.indexOf(":");
   if (colonIdx === -1) return "";
   return line.slice(colonIdx + 1).trim();
-}
-
-function parseDateValue(value: string): Date {
-  const clean = value.replace(/[TZ]/g, "");
-  if (clean.length === 8) {
-    const year = parseInt(clean.slice(0, 4));
-    const month = parseInt(clean.slice(4, 6)) - 1;
-    const day = parseInt(clean.slice(6, 8));
-    return new Date(year, month, day);
-  }
-  return new Date(value);
 }

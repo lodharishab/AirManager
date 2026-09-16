@@ -4,6 +4,7 @@ import connectPgSimple from "connect-pg-simple";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import compression from "compression";
 import { randomUUID } from "crypto";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -27,6 +28,8 @@ declare module "express-serve-static-core" {
 
 const app = express();
 app.disable("x-powered-by");
+// Compress JSON APIs and the built SPA assets; the JS bundle is ~3-4x smaller on the wire.
+app.use(compression());
 // Behind a reverse proxy (nginx/caddy) set TRUST_PROXY=1 so rate limits & secure cookies use real client IPs.
 if (process.env.TRUST_PROXY === "1") {
   app.set("trust proxy", 1);
@@ -34,8 +37,6 @@ if (process.env.TRUST_PROXY === "1") {
 // Security headers. CSP left off: the React bundle needs inline bootstrap; enable with a policy once audited.
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 const httpServer = createServer(app);
-
-app.disable("x-powered-by");
 
 app.use((_req, res, next) => {
   res.set("X-Content-Type-Options", "nosniff");

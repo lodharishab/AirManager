@@ -27,6 +27,41 @@ import {
   type Ticket, type InsertTicket, type TicketEvent, type InsertTicketEvent,
 } from "@shared/schema";
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Room inventory changes can silently oversell existing reservations: shrinking a
+// room type below the units already allocated to it, or deleting a room type while
+// unassigned bookings consume total capacity, invalidates stays the system already
+// accepted. The booking guard trigger only fires on bookings, so room mutations
+// must re-check every active booking's capacity fit AFTER the change, inside the
+// same transaction that applies it.
+async function assertRoomCapacityFits(tx: Tx, propertyId: number): Promise<void> {
+  const [property] = await tx.select().from(properties).where(and(eq(properties.id, propertyId), isNull(properties.deletedAt)));
+  if (!property || (property.bookingMode || "whole") !== "room_based") return;
+  const propertyRooms = await tx.select().from(rooms).where(eq(rooms.propertyId, propertyId));
+  const active = await tx.select().from(bookings).where(and(
+    eq(bookings.propertyId, propertyId),
+    isNull(bookings.deletedAt),
+    sql`${bookings.status} != 'cancelled'`,
+  ));
+  if (active.length === 0) return;
+  const totalCapacity = propertyRooms.reduce((sum, room) => sum + room.roomCount, 0);
+  const horizonStart = active.reduce((min, b) => (b.checkIn < min ? b.checkIn : min), active[0].checkIn);
+  const horizonEnd = active.reduce((max, b) => (b.checkOut > max ? b.checkOut : max), active[0].checkOut);
+  if (peakUnits(active, horizonStart, horizonEnd) > totalCapacity) {
+    bookingError("This room change would oversell reservations that use total property capacity.", 409);
+  }
+  for (const room of propertyRooms) {
+    const allocated = active.filter(b => b.roomId === room.id);
+    if (allocated.length === 0) continue;
+    const roomStart = allocated.reduce((min, b) => (b.checkIn < min ? b.checkIn : min), allocated[0].checkIn);
+    const roomEnd = allocated.reduce((max, b) => (b.checkOut > max ? b.checkOut : max), allocated[0].checkOut);
+    if (peakUnits(allocated, roomStart, roomEnd) > room.roomCount) {
+      bookingError(`This room change would oversell existing reservations on room type "${room.roomType}".`, 409);
+    }
+  }
+}
+
 export interface FollowUpWithMeta extends FollowUp {
   guestName: string | null;
   propertyName: string | null;
@@ -183,6 +218,7 @@ export interface IStorage {
   updateExternalCalendar(id: number, data: Partial<InsertExternalCalendar>): Promise<ExternalCalendar | undefined>;
   deleteExternalCalendar(id: number): Promise<void>;
   deleteExternalBookings(propertyId: number, source: string): Promise<void>;
+  replaceExternalBookings(propertyId: number, source: string, events: { summary: string | null; dtstart: string; dtend: string }[]): Promise<{ imported: number; failed: number; failedEvents: { dtstart: string; dtend: string; summary: string | null; error: string }[] }>;
 
   getSetting(key: string): Promise<string | undefined>;
   getSettings(prefix: string): Promise<Record<string, string>>;
@@ -290,16 +326,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProperty(id: number): Promise<void> {
-    const now = new Date().toISOString();
-    await db.update(bookings).set({ deletedAt: now }).where(and(eq(bookings.propertyId, id), isNull(bookings.deletedAt)));
-    await db.delete(housekeepingTasks).where(eq(housekeepingTasks.propertyId, id));
-    await db.delete(reviews).where(eq(reviews.propertyId, id));
-    await db.delete(enquiries).where(eq(enquiries.propertyId, id));
-    await db.delete(expenses).where(eq(expenses.propertyId, id));
-    await db.delete(galleryImages).where(eq(galleryImages.propertyId, id));
-    await db.delete(rooms).where(eq(rooms.propertyId, id));
-    await db.delete(propertyLinks).where(eq(propertyLinks.propertyId, id));
-    await db.update(properties).set({ deletedAt: now }).where(eq(properties.id, id));
+    await db.transaction(async (tx) => {
+      const now = new Date().toISOString();
+      await tx.update(bookings).set({ deletedAt: now }).where(and(eq(bookings.propertyId, id), isNull(bookings.deletedAt)));
+      await tx.delete(housekeepingTasks).where(eq(housekeepingTasks.propertyId, id));
+      await tx.delete(reviews).where(eq(reviews.propertyId, id));
+      await tx.delete(enquiries).where(eq(enquiries.propertyId, id));
+      await tx.delete(expenses).where(eq(expenses.propertyId, id));
+      await tx.delete(galleryImages).where(eq(galleryImages.propertyId, id));
+      await tx.delete(rooms).where(eq(rooms.propertyId, id));
+      await tx.delete(propertyLinks).where(eq(propertyLinks.propertyId, id));
+      await tx.update(properties).set({ deletedAt: now }).where(eq(properties.id, id));
+    });
   }
 
   async getAllRooms(): Promise<Room[]> {
@@ -321,12 +359,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRoom(id: number, data: Partial<InsertRoom>): Promise<Room | undefined> {
-    const [updated] = await db.update(rooms).set(data).where(eq(rooms.id, id)).returning();
-    return updated;
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(rooms).set(data).where(eq(rooms.id, id)).returning();
+      if (!updated) return undefined;
+      await assertRoomCapacityFits(tx, updated.propertyId);
+      return updated;
+    });
   }
 
   async deleteRoom(id: number): Promise<void> {
-    await db.delete(rooms).where(eq(rooms.id, id));
+    await db.transaction(async (tx) => {
+      const [room] = await tx.select().from(rooms).where(eq(rooms.id, id));
+      if (!room) return;
+      const allocated = await tx.select().from(bookings).where(and(
+        eq(bookings.roomId, id),
+        isNull(bookings.deletedAt),
+        sql`${bookings.status} != 'cancelled'`,
+      ));
+      if (allocated.length > 0) {
+        bookingError("This room type has reservations. Reassign them to another room type before deleting it.", 409);
+      }
+      await tx.delete(rooms).where(eq(rooms.id, id));
+      await assertRoomCapacityFits(tx, room.propertyId);
+    });
   }
 
   async getPropertyLinks(propertyId: number): Promise<PropertyLink[]> {
@@ -759,8 +814,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadNotificationCount(): Promise<number> {
-    const unread = await db.select().from(notifications).where(eq(notifications.isRead, 0));
-    return unread.length;
+    const [row] = await db
+      .select({ unread: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(eq(notifications.isRead, 0));
+    return row?.unread ?? 0;
   }
 
   async getUserPreferences(userId: number): Promise<UserPreferences | undefined> {
@@ -964,6 +1022,50 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExternalBookings(propertyId: number, source: string): Promise<void> {
     await db.delete(bookings).where(and(eq(bookings.propertyId, propertyId), eq(bookings.source, source)));
+  }
+
+  // Replaces one external calendar's blocked bookings atomically: the delete and
+  // all inserts commit together, so a mid-sync failure can no longer leave fewer
+  // blocks than the OTA advertises. Per-event savepoints preserve the historical
+  // semantics where a single overlapping/invalid event is skipped, not fatal.
+  async replaceExternalBookings(
+    propertyId: number,
+    source: string,
+    events: { summary: string | null; dtstart: string; dtend: string }[],
+  ): Promise<{ imported: number; failed: number; failedEvents: { dtstart: string; dtend: string; summary: string | null; error: string }[] }> {
+    return db.transaction(async (tx) => {
+      await tx.delete(bookings).where(and(eq(bookings.propertyId, propertyId), eq(bookings.source, source)));
+      let imported = 0;
+      let failed = 0;
+      const failedEvents: { dtstart: string; dtend: string; summary: string | null; error: string }[] = [];
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        const savepoint = `external_event_${i}`;
+        try {
+          await tx.execute(sql.raw(`SAVEPOINT ${savepoint}`));
+          await tx.insert(bookings).values({
+            propertyId,
+            guestName: event.summary || "Blocked",
+            checkIn: event.dtstart,
+            checkOut: event.dtend,
+            status: "blocked",
+            totalAmount: 0,
+            source,
+          });
+          imported++;
+        } catch (e: unknown) {
+          failed++;
+          failedEvents.push({
+            dtstart: event.dtstart,
+            dtend: event.dtend,
+            summary: event.summary,
+            error: e instanceof Error ? e.message : String(e),
+          });
+          await tx.execute(sql.raw(`ROLLBACK TO SAVEPOINT ${savepoint}`));
+        }
+      }
+      return { imported, failed, failedEvents };
+    });
   }
 
   async getSetting(key: string): Promise<string | undefined> {
