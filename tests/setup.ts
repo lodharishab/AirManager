@@ -70,6 +70,8 @@ await pool.query(readFileSync(path.join(REPO_ROOT, "scripts/migrations/20260908-
 
 await pool.query(readFileSync(path.join(REPO_ROOT, "scripts/migrations/20260915-hermes-reconciliation.sql"), "utf8"));
 
+await pool.query(readFileSync(path.join(REPO_ROOT, "scripts/migrations/20260916-room-capacity-guard.sql"), "utf8"));
+
 const client = await pool.connect();
 const tablesForCleanup = await publicTables(client);
 client.release();

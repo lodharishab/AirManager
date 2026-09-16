@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, integer, timestamp, serial, boolean, unique, json, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, serial, boolean, unique, json, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -55,7 +55,11 @@ export const properties = pgTable("properties", {
   currency: text("currency").notNull().default("INR"),
   deletedAt: text("deleted_at"),
 }, (table) => ({
-  nameAddressUnique: unique("properties_name_address_unique").on(table.name, table.address),
+  // Partial index: a soft-deleted property must not block re-creating one with the
+  // same name+address (matches scripts/migrations/20260916-room-capacity-guard.sql).
+  nameAddressUnique: uniqueIndex("properties_name_address_unique")
+    .on(table.name, table.address)
+    .where(sql`deleted_at IS NULL`),
 }));
 
 export const rooms = pgTable("rooms", {

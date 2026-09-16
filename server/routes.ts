@@ -71,14 +71,26 @@ function asyncHandler(fn: AsyncHandler) {
   };
 }
 
+function regenerateSession(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((err) => (err ? reject(err) : resolve()));
+  });
+}
+
 function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // API-key auth for the n8n dev harness / server-to-server callers
+  // API-key auth for the n8n dev harness / server-to-server callers.
+  // The static key is READ-ONLY by design: the MCP adapter only performs GETs
+  // (verified inventory), so a leaked key must not be able to mutate bookings,
+  // properties or settings. Writes always require an authenticated session.
   const apiKey = process.env.AIRMANAGER_API_KEY;
   const provided = req.headers["x-api-key"];
   if (apiKey && typeof provided === "string") {
     const a = Buffer.from(provided);
     const b = Buffer.from(apiKey);
     if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        return res.status(403).json({ message: "API key access is read-only. Sign in to perform this action." });
+      }
       if (req.path.startsWith("/auth/") || req.path === "/user-preferences") {
         if (!req.session?.userId) return res.status(401).json({ message: "Sign in to access your account" });
       }
@@ -330,6 +342,7 @@ export async function registerRoutes(
     }
     const hashed = await bcrypt.hash(password, 12);
     const user = await storage.createUser({ username, password: hashed });
+    await regenerateSession(req);
     req.session.userId = user.id;
     res.status(201).json({ id: user.id, username: user.username });
   }));
@@ -347,6 +360,7 @@ export async function registerRoutes(
     if (!valid) {
       return res.status(401).json({ message: "Invalid username or password" });
     }
+    await regenerateSession(req);
     req.session.userId = user.id;
     res.json({ id: user.id, username: user.username });
   }));
@@ -437,6 +451,20 @@ export async function registerRoutes(
     }>;
     if (body.provider !== undefined && !AI_PROVIDERS.includes(body.provider as AiProvider)) {
       return res.status(400).json({ message: `Unknown provider: ${body.provider}` });
+    }
+    // The AI gateway sends the stored API key as a Bearer credential to this URL,
+    // so an arbitrary value would exfiltrate the credential. Apply the same URL
+    // safety and private-network rules used for external calendar fetching.
+    if (typeof body.baseUrl === "string" && body.baseUrl.trim() !== "") {
+      const safe = isUrlSafe(body.baseUrl);
+      if (!safe.valid) return res.status(400).json({ message: safe.message });
+      let hostCheck: { valid: boolean; message?: string };
+      try {
+        hostCheck = await resolveAndValidateHost(new URL(body.baseUrl).hostname);
+      } catch {
+        return res.status(400).json({ message: "Invalid URL format" });
+      }
+      if (!hostCheck.valid) return res.status(400).json({ message: hostCheck.message });
     }
     const cfg = await saveAiConfig({
       provider: body.provider as AiProvider | undefined,
@@ -706,8 +734,7 @@ export async function registerRoutes(
     const property = await storage.getProperty(Number(req.params.id));
     if (!property) return res.status(404).json({ message: "Property not found" });
     const links = await storage.getPropertyLinks(property.id);
-    const allBookings = await storage.getAllBookings();
-    const propertyBookings = allBookings.filter(b => b.propertyId === property.id);
+    const propertyBookings = await storage.getBookingsByProperty(property.id);
     const rooms = await storage.getRoomsByProperty(property.id);
     const externalCalendars = await storage.getExternalCalendars(property.id);
     const facts = await storage.getPropertyFacts(property.id);
@@ -718,8 +745,16 @@ export async function registerRoutes(
     if (req.body.bookingMode && !["whole", "room_based"].includes(req.body.bookingMode)) return res.status(400).json({ message: "Booking mode must be whole or room_based" });
     const parsed = insertPropertySchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
-    const property = await storage.createProperty(parsed.data);
-    res.status(201).json(property);
+    try {
+      const property = await storage.createProperty(parsed.data);
+      res.status(201).json(property);
+    } catch (e: unknown) {
+      // The partial unique index only blocks two LIVE properties sharing name+address.
+      if (typeof e === "object" && e !== null && (e as { code?: string }).code === "23505") {
+        return res.status(409).json({ message: "A property with this name and address already exists" });
+      }
+      throw e;
+    }
   }));
 
   app.patch("/api/properties/:id", asyncHandler(async (req, res) => {
@@ -847,31 +882,18 @@ export async function registerRoutes(
     const calendarName = name || new URL(url).hostname;
     const sourceId = `external:${url}`;
 
-    await storage.deleteExternalBookings(propertyId, sourceId);
-
-    let imported = 0;
-    let failed = 0;
-    for (const event of events) {
-      try {
-        await storage.createBooking({
-          propertyId,
-          guestName: event.summary || "Blocked",
-          checkIn: event.dtstart,
-          checkOut: event.dtend,
-          status: "blocked",
-          totalAmount: 0,
-          source: sourceId,
-        });
-        imported++;
-      } catch (e: unknown) {
-        failed++;
-        logStructured("warn", {
-          method: "POST",
-          path: `/api/properties/${propertyId}/import-calendar`,
-          error: `Failed to import event: ${(e instanceof Error ? e.message : String(e))}`,
-          event: { dtstart: event.dtstart, dtend: event.dtend, summary: event.summary },
-        });
-      }
+    const { imported, failed, failedEvents } = await storage.replaceExternalBookings(
+      propertyId,
+      sourceId,
+      events.map(e => ({ summary: e.summary, dtstart: e.dtstart, dtend: e.dtend })),
+    );
+    for (const failure of failedEvents) {
+      logStructured("warn", {
+        method: "POST",
+        path: `/api/properties/${propertyId}/import-calendar`,
+        error: `Failed to import event: ${failure.error}`,
+        event: { dtstart: failure.dtstart, dtend: failure.dtend, summary: failure.summary },
+      });
     }
 
     const existingCalendars = await storage.getExternalCalendars(propertyId);
@@ -1163,7 +1185,9 @@ export async function registerRoutes(
     const { averageOccupancy } = await storage.getOccupancyStats();
 
     const activeProperties = allProperties.filter(p => p.status === 'active').length;
-    const currentBookings = allBookings.filter(b => b.status === 'current').length;
+    // `current` is the legacy alias of `checked_in`; count both so guests in-house
+    // under either status are visible.
+    const currentBookings = allBookings.filter(b => b.status === 'current' || b.status === 'checked_in').length;
     const upcomingBookings = allBookings.filter(b => b.status === 'upcoming').length;
 
     res.json({
