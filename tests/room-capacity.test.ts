@@ -10,7 +10,8 @@ describe('Room inventory capacity guard', () => {
     const p = await storage.createProperty(makeProperty({ bookingMode: 'room_based' }));
     const room = await storage.createRoom(makeRoom(p.id, { roomType: 'Garden', roomCount: 2 }));
     await storage.createBooking(makeBooking(p.id, { roomId: room.id, roomCount: 2, checkIn: '2099-01-01', checkOut: '2099-01-03' }));
-    await expect(storage.updateRoom(room.id, { roomCount: 1 })).rejects.toThrow('oversell');
+    // The DB trigger rejects before the storage-level message can surface.
+    await expect(storage.updateRoom(room.id, { roomCount: 1 })).rejects.toThrow('ROOM_CAPACITY_VIOLATION');
     expect((await storage.getRoom(room.id))?.roomCount).toBe(2);
   });
 
@@ -27,7 +28,7 @@ describe('Room inventory capacity guard', () => {
     await storage.createRoom(makeRoom(p.id, { roomType: 'Keep', roomCount: 2 }));
     const spare = await storage.createRoom(makeRoom(p.id, { roomType: 'Spare', roomCount: 1 }));
     await storage.createBooking(makeBooking(p.id, { roomCount: 3, checkIn: '2099-02-01', checkOut: '2099-02-03' }));
-    await expect(storage.deleteRoom(spare.id)).rejects.toThrow('oversell');
+    await expect(storage.deleteRoom(spare.id)).rejects.toThrow('ROOM_CAPACITY_VIOLATION');
   });
 
   it('allows safe inventory changes: growth and a shrink that still fits', async () => {
